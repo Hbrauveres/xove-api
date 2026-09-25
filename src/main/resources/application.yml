@@ -2,6 +2,12 @@ server:
   port: 8080
   forward-headers-strategy: framework
 
+spring:
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+
 management:
   endpoints:
     web:
