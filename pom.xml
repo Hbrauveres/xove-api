@@ -8,10 +8,10 @@
 		<version>4.1.1</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>dev.hbrauveres</groupId>
-	<artifactId>xove-api</artifactId>
+	<groupId>dev.kryora</groupId>
+	<artifactId>kryora-live-api</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>xove-api</name>
+	<name>kryora-live-api</name>
 	<description/>
 	<url/>
 	<licenses>
