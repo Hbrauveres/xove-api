@@ -46,4 +46,9 @@ public class ScreenSlot {
         }
         holder = null;
     }
+
+    /** Empties the slot. Only for tests, which share one slot across a Spring context. */
+    synchronized void clear() {
+        holder = null;
+    }
 }
