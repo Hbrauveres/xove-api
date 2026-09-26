@@ -20,6 +20,9 @@ public class User {
     @Column(name = "avatar_url")
     private String avatarUrl;
 
+    @Column(name = "google_subject", unique = true)
+    private String googleSubject;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private UserStatus status = UserStatus.NONE;
@@ -32,21 +35,30 @@ public class User {
     }
 
     public User(String email, String name, String avatarUrl) {
-        this.email = email.trim().toLowerCase(Locale.ROOT);
+        this.email = normalizeEmail(email);
         this.name = name;
         this.avatarUrl = avatarUrl;
+    }
+
+    public static String normalizeEmail(String email) {
+        return email.trim().toLowerCase(Locale.ROOT);
     }
 
     public Long getId() { return id; }
     public String getEmail() { return email; }
     public String getName() { return name; }
     public String getAvatarUrl() { return avatarUrl; }
+    public String getGoogleSubject() { return googleSubject; }
     public UserStatus getStatus() { return status; }
     public Instant getCreatedAt() { return createdAt; }
 
     public void updateProfile(String name, String avatarUrl) {
         this.name = name;
         this.avatarUrl = avatarUrl;
+    }
+
+    public void linkGoogleAccount(String googleSubject) {
+        this.googleSubject = googleSubject;
     }
 
     public void changeStatus(UserStatus status) {

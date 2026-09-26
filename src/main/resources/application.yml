@@ -1,12 +1,32 @@
 server:
   port: 8080
   forward-headers-strategy: framework
+  servlet:
+    session:
+      timeout: 30d
+      cookie:
+        name: XOVE_SESSION
+        http-only: true
+        secure: true
+        same-site: lax
 
 spring:
   jpa:
     open-in-view: false
     hibernate:
       ddl-auto: validate
+  session:
+    jdbc:
+      initialize-schema: never
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID:not-configured}
+            client-secret: ${GOOGLE_CLIENT_SECRET:not-configured}
+            scope: openid,email,profile
+            redirect-uri: "{baseUrl}/api/login/oauth2/code/{registrationId}"
 
 management:
   endpoints:
@@ -14,3 +34,6 @@ management:
       base-path: /api
       exposure:
         include: health
+
+xove:
+  admin-emails: ${ADMIN_EMAILS:}
