@@ -1,5 +1,6 @@
 package dev.hbrauveres.xove.config;
 
+import dev.hbrauveres.xove.auth.AdminAuthoritiesMapper;
 import dev.hbrauveres.xove.auth.LoginSuccessHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,12 +14,14 @@ import org.springframework.security.web.authentication.logout.HttpStatusReturnin
 public class SecurityConfig {
 
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http, LoginSuccessHandler loginSuccessHandler)
+    SecurityFilterChain securityFilterChain(HttpSecurity http, LoginSuccessHandler loginSuccessHandler,
+                                            AdminAuthoritiesMapper adminAuthoritiesMapper)
             throws Exception {
         http
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/health", "/api/health/**").permitAll()
                 .requestMatchers("/api/oauth2/**", "/api/login/**").permitAll()
+                .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated())
 
             // Google login, with every URL under /api so Caddy routes it to this app
@@ -26,6 +29,7 @@ public class SecurityConfig {
                 .loginPage("/")
                 .authorizationEndpoint(e -> e.baseUri("/api/oauth2/authorization"))
                 .redirectionEndpoint(e -> e.baseUri("/api/login/oauth2/code/*"))
+                .userInfoEndpoint(u -> u.userAuthoritiesMapper(adminAuthoritiesMapper))
                 .successHandler(loginSuccessHandler)
                 .failureHandler((request, response, ex) -> response.sendRedirect("/?error=login-failed")))
 
