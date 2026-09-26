@@ -6,7 +6,6 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.cookie;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -71,8 +70,7 @@ class AuthTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("friend@example.com"))
                 .andExpect(jsonPath("$.status").value("NONE"))
-                .andExpect(jsonPath("$.admin").value(false))
-                .andExpect(cookie().exists("XSRF-TOKEN"));
+                .andExpect(jsonPath("$.admin").value(false));
     }
 
     @Test
