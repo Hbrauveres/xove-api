@@ -5,7 +5,7 @@ server:
     session:
       timeout: 30d
       cookie:
-        name: KRYORA_SESSION
+        name: XOVE_SESSION
         http-only: true
         secure: true
         same-site: lax
@@ -39,11 +39,11 @@ management:
       exposure:
         include: health
 
-kryora:
+xove:
   admin-emails: ${ADMIN_EMAILS:}
   livekit:
     url: ${LIVEKIT_URL:}
     api-key: ${LIVEKIT_API_KEY:}
     api-secret: ${LIVEKIT_API_SECRET:}
-    room: kryora
+    room: xove
     token-ttl: 1h
