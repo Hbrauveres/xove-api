@@ -11,6 +11,10 @@ server:
         same-site: lax
 
 spring:
+  mvc:
+    # errors come back as RFC 9457 "problem details" JSON; "detail" holds our user-facing message
+    problemdetails:
+      enabled: true
   jpa:
     open-in-view: false
     hibernate:
