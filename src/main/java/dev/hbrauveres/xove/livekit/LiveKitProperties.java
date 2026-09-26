@@ -6,7 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 /**
  * Settings under "xove.livekit:" in application.yml.
  *
- * @param url       where browsers connect, e.g. wss://rtc-stage.hbrauveres.dev
+ * @param url       where browsers connect, e.g. wss://rtc-stage.xove.app
  * @param apiKey    same key LiveKit was started with (LIVEKIT_KEYS)
  * @param apiSecret same secret; signs the tokens, never leaves the server
  * @param room      the one room everybody joins
