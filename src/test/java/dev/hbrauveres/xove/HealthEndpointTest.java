@@ -22,10 +22,8 @@ class HealthEndpointTest {
     void healthReturnsUp() throws Exception {
         var request = HttpRequest.newBuilder(
                 URI.create("http://localhost:" + port + "/api/health")).build();
-
         var response = HttpClient.newHttpClient()
                 .send(request, HttpResponse.BodyHandlers.ofString());
-
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(response.body()).contains("\"status\":\"UP\"");
     }

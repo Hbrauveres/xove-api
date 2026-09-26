@@ -17,7 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
-@Transactional // each test is rolled back, so tests never see each other's data
+@Transactional
 class PersistenceTest {
 
     @Autowired UserRepository users;
@@ -26,14 +26,12 @@ class PersistenceTest {
     @Test
     void storesEmailsLowercase() {
         users.saveAndFlush(new User("Friend@Gmail.com", "Friend", null));
-
         assertThat(users.findByEmail("friend@gmail.com")).isPresent();
     }
 
     @Test
     void rejectsDuplicateEmails() {
         users.saveAndFlush(new User("a@gmail.com", "A", null));
-
         assertThatThrownBy(() -> users.saveAndFlush(new User("A@gmail.com", "A again", null)))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
@@ -42,7 +40,6 @@ class PersistenceTest {
     void allowsOnlyOnePendingRequestPerUser() {
         User user = users.saveAndFlush(new User("b@gmail.com", "B", null));
         requests.saveAndFlush(new AccessRequest(user, "let me in"));
-
         assertThatThrownBy(() -> requests.saveAndFlush(new AccessRequest(user, "again")))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
@@ -52,12 +49,9 @@ class PersistenceTest {
         User admin = users.saveAndFlush(new User("admin@gmail.com", "Admin", null));
         User user = users.saveAndFlush(new User("c@gmail.com", "C", null));
         AccessRequest first = requests.saveAndFlush(new AccessRequest(user, "first"));
-
         first.decide(AccessRequestStatus.DECLINED, admin);
         requests.saveAndFlush(first);
         requests.saveAndFlush(new AccessRequest(user, "second try"));
-
-        assertThat(requests.findByUserIdAndStatus(user.getId(), AccessRequestStatus.PENDING))
-                .isPresent();
+        assertThat(requests.findByUserIdAndStatus(user.getId(), AccessRequestStatus.PENDING)).isPresent();
     }
 }
