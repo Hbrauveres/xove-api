@@ -41,3 +41,9 @@ management:
 
 xove:
   admin-emails: ${ADMIN_EMAILS:}
+  livekit:
+    url: ${LIVEKIT_URL:}
+    api-key: ${LIVEKIT_API_KEY:}
+    api-secret: ${LIVEKIT_API_SECRET:}
+    room: xove
+    token-ttl: 1h
