@@ -82,6 +82,13 @@ class AccessFlowTest {
     }
 
     @Test
+    void errorsCarryAMessageTheUiCanShow() throws Exception {
+        requestAccess("sub-admin", "{}")
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("You already have access"));
+    }
+
+    @Test
     void messagesOver500CharactersAreRejected() throws Exception {
         String longMessage = "x".repeat(501);
         requestAccess("sub-friend", "{\"message\":\"" + longMessage + "\"}").andExpect(status().isBadRequest());

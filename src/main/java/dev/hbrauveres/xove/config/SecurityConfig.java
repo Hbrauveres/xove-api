@@ -2,6 +2,8 @@ package dev.hbrauveres.xove.config;
 
 import dev.hbrauveres.xove.auth.AdminAuthoritiesMapper;
 import dev.hbrauveres.xove.auth.LoginSuccessHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
@@ -12,6 +14,8 @@ import org.springframework.security.web.authentication.logout.HttpStatusReturnin
 
 @Configuration
 public class SecurityConfig {
+
+    private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, LoginSuccessHandler loginSuccessHandler,
@@ -31,7 +35,10 @@ public class SecurityConfig {
                 .redirectionEndpoint(e -> e.baseUri("/api/login/oauth2/code/*"))
                 .userInfoEndpoint(u -> u.userAuthoritiesMapper(adminAuthoritiesMapper))
                 .successHandler(loginSuccessHandler)
-                .failureHandler((request, response, ex) -> response.sendRedirect("/?error=login-failed")))
+                .failureHandler((request, response, ex) -> {
+                    log.warn("Google login failed: {}", ex.getMessage());
+                    response.sendRedirect("/?error=login-failed");
+                }))
 
             // An API answers 401, it doesn't redirect to a login page
             .exceptionHandling(e -> e.authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
