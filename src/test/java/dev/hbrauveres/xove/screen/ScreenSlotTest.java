@@ -16,6 +16,8 @@ class ScreenSlotTest {
 
     private static final Long ANA = 1L;
     private static final Long BRUNO = 2L;
+    private static final SharingConnection ANA_LAPTOP = new SharingConnection("PA_laptop", "TR_screen1");
+    private static final SharingConnection BRUNO_LAPTOP = new SharingConnection("PA_bruno", "TR_bruno1");
 
     private MutableClock clock;
     private ScreenSlot slot;
@@ -33,7 +35,7 @@ class ScreenSlotTest {
 
     @Test
     void takingAnEmptySlotMakesYouTheHolder() {
-        slot.take(ANA, "Ana", "https://img/ana");
+        slot.take(ANA, "Ana", "https://img/ana", ANA_LAPTOP);
 
         ScreenHolder holder = slot.current().orElseThrow();
         assertThat(holder.userId()).isEqualTo(ANA);
@@ -43,10 +45,10 @@ class ScreenSlotTest {
 
     @Test
     void someoneElseCanTakeOver() {
-        slot.take(ANA, "Ana", null);
+        slot.take(ANA, "Ana", null, ANA_LAPTOP);
         clock.advance(Duration.ofMinutes(5));
 
-        slot.take(BRUNO, "Bruno", null);
+        slot.take(BRUNO, "Bruno", null, BRUNO_LAPTOP);
 
         ScreenHolder holder = slot.current().orElseThrow();
         assertThat(holder.userId()).isEqualTo(BRUNO);
@@ -55,17 +57,17 @@ class ScreenSlotTest {
 
     @Test
     void takingAgainWhileHoldingKeepsTheOriginalStartTime() {
-        ScreenHolder first = slot.take(ANA, "Ana", null);
+        ScreenHolder first = slot.take(ANA, "Ana", null, ANA_LAPTOP);
         clock.advance(Duration.ofMinutes(5));
 
-        slot.take(ANA, "Ana", null);
+        slot.take(ANA, "Ana", null, ANA_LAPTOP);
 
         assertThat(slot.current().orElseThrow().since()).isEqualTo(first.since());
     }
 
     @Test
     void theHolderCanRelease() {
-        slot.take(ANA, "Ana", null);
+        slot.take(ANA, "Ana", null, ANA_LAPTOP);
 
         slot.release(ANA);
 
@@ -74,7 +76,7 @@ class ScreenSlotTest {
 
     @Test
     void someoneElseCannotRelease() {
-        slot.take(ANA, "Ana", null);
+        slot.take(ANA, "Ana", null, ANA_LAPTOP);
 
         assertThatThrownBy(() -> slot.release(BRUNO)).isInstanceOf(NotTheHolderException.class);
         assertThat(slot.current().orElseThrow().userId()).isEqualTo(ANA);
@@ -84,6 +86,78 @@ class ScreenSlotTest {
     void releasingAnEmptySlotDoesNothing() {
         slot.release(ANA);
 
+        assertThat(slot.current()).isEmpty();
+    }
+
+    // --- LiveKit reports (spec 0038) ---
+
+
+    @Test
+    void theSharingConnectionLeavingFreesTheSlot() {
+        slot.take(ANA, "Ana", null, ANA_LAPTOP);
+
+        assertThat(slot.connectionLeft(ANA, "PA_laptop")).isTrue();
+        assertThat(slot.current()).isEmpty();
+    }
+
+    @Test
+    void anotherConnectionOfTheHolderLeavingKeepsTheSlot() {
+        slot.take(ANA, "Ana", null, ANA_LAPTOP);
+
+        assertThat(slot.connectionLeft(ANA, "PA_phone")).isFalse();
+        assertThat(slot.current().orElseThrow().userId()).isEqualTo(ANA);
+    }
+
+    @Test
+    void someoneElseLeavingKeepsTheSlot() {
+        slot.take(ANA, "Ana", null, ANA_LAPTOP);
+
+        assertThat(slot.connectionLeft(BRUNO, "PA_laptop")).isFalse();
+        assertThat(slot.screenUnpublished(BRUNO, "PA_bruno", "TR_screen1")).isFalse();
+        assertThat(slot.current().orElseThrow().userId()).isEqualTo(ANA);
+    }
+
+    @Test
+    void leavingWhenNobodySharesDoesNothing() {
+        assertThat(slot.connectionLeft(ANA, "PA_laptop")).isFalse();
+        assertThat(slot.screenUnpublished(ANA, "PA_laptop", "TR_screen1")).isFalse();
+        assertThat(slot.current()).isEmpty();
+    }
+
+    @Test
+    void theSharedTrackBeingUnpublishedFreesTheSlot() {
+        slot.take(ANA, "Ana", null, ANA_LAPTOP);
+
+        assertThat(slot.screenUnpublished(ANA, "PA_laptop", "TR_screen1")).isTrue();
+        assertThat(slot.current()).isEmpty();
+    }
+
+    @Test
+    void aLateUnpublishOfAnEarlierShareKeepsTheNewOne() {
+        slot.take(ANA, "Ana", null, ANA_LAPTOP);
+        slot.release(ANA);
+        slot.take(ANA, "Ana", null, new SharingConnection("PA_laptop", "TR_screen2"));
+
+        assertThat(slot.screenUnpublished(ANA, "PA_laptop", "TR_screen1")).isFalse();
+        assertThat(slot.current().orElseThrow().userId()).isEqualTo(ANA);
+    }
+
+    @Test
+    void takingAgainWhileHoldingUpdatesTheConnection() {
+        slot.take(ANA, "Ana", null, ANA_LAPTOP);
+        slot.take(ANA, "Ana", null, new SharingConnection("PA_laptop", "TR_screen2"));
+
+        assertThat(slot.screenUnpublished(ANA, "PA_laptop", "TR_screen1")).isFalse();
+        assertThat(slot.screenUnpublished(ANA, "PA_laptop", "TR_screen2")).isTrue();
+    }
+
+    @Test
+    void takingWithoutSayingWhichConnectionIsRefused() {
+        assertThatThrownBy(() -> slot.take(ANA, "Ana", null, null)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> slot.take(ANA, "Ana", null, new SharingConnection("PA_laptop", null)))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> slot.take(ANA, "Ana", null, new SharingConnection(" ", "TR_screen1")))
+                .isInstanceOf(IllegalArgumentException.class);
         assertThat(slot.current()).isEmpty();
     }
 

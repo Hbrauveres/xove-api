@@ -25,6 +25,8 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/health", "/api/health/**").permitAll()
                 .requestMatchers("/api/oauth2/**", "/api/login/**").permitAll()
+                // LiveKit has no login; the webhook checks LiveKit's signature itself
+                .requestMatchers("/api/livekit/webhook").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated())
 
@@ -49,7 +51,7 @@ public class SecurityConfig {
 
             // CSRF for a single-page app: token in a readable XSRF-TOKEN cookie,
             // sent back by the frontend in the X-XSRF-TOKEN header
-            .csrf(csrf -> csrf.spa());
+            .csrf(csrf -> csrf.spa().ignoringRequestMatchers("/api/livekit/webhook"));
 
         return http.build();
     }

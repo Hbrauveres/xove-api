@@ -1,10 +1,14 @@
 package dev.hbrauveres.xove.screen;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oidcLogin;
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -123,10 +127,41 @@ class ScreenControllerTest {
                 .andExpect(jsonPath("$.holder.name").value("Friend"));
     }
 
+    // ---- the sharing connection (spec 0038) ----
+
+    @Test
+    void takingCanSayWhichConnectionIsSharingAndNobodySeesIt() throws Exception {
+        mvc.perform(post("/api/screen/take").with(as("sub-friend")).with(csrf())
+                        .contentType("application/json")
+                        .content("{\"participantSid\":\"PA_laptop\",\"trackSid\":\"TR_screen\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.holder.name").value("Friend"))
+                .andExpect(content().string(not(containsString("PA_laptop"))))
+                .andExpect(content().string(not(containsString("TR_screen"))));
+
+        Long friend = slot.current().orElseThrow().userId();
+        assertThat(slot.connectionLeft(friend, "PA_phone")).isFalse();
+        assertThat(slot.connectionLeft(friend, "PA_laptop")).isTrue();
+    }
+
+    @Test
+    void takingWithoutSayingWhichConnectionIsRefused() throws Exception {
+        mvc.perform(post("/api/screen/take").with(as("sub-friend")).with(csrf()))
+                .andExpect(status().isBadRequest());
+        mvc.perform(post("/api/screen/take").with(as("sub-friend")).with(csrf())
+                        .contentType("application/json").content("{\"participantSid\":\"PA_laptop\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("Your browser didn't say which video connection is sharing. Reload the page and try again."));
+
+        assertThat(slot.current()).isEmpty();
+    }
+
     // ---- helpers ----
 
     private ResultActions take(String subject) throws Exception {
-        return mvc.perform(post("/api/screen/take").with(as(subject)).with(csrf()));
+        return mvc.perform(post("/api/screen/take").with(as(subject)).with(csrf())
+                .contentType("application/json")
+                .content("{\"participantSid\":\"PA_" + subject + "\",\"trackSid\":\"TR_" + subject + "\"}"));
     }
 
     private ResultActions release(String subject) throws Exception {

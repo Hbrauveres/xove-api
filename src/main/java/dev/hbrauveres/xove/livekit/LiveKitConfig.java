@@ -11,4 +11,9 @@ class LiveKitConfig {
     LiveKitTokens liveKitTokens(LiveKitProperties properties) {
         return new LiveKitTokens(properties, Clock.systemUTC());
     }
+
+    @Bean
+    LiveKitWebhookVerifier liveKitWebhookVerifier(LiveKitProperties properties) {
+        return new LiveKitWebhookVerifier(properties, Clock.systemUTC());
+    }
 }
