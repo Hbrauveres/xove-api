@@ -1,5 +1,0 @@
-# Rollback drill (Step 1 Part 6): on staging only, the API listens on the wrong
-# port, so the health check fails and ops/deploy.sh must roll back. Reverted
-# right after the drill.
-server:
-  port: 9999
