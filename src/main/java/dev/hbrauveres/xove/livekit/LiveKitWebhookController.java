@@ -28,11 +28,14 @@ public class LiveKitWebhookController {
     private final LiveKitWebhookVerifier verifier;
     private final ScreenSlot slot;
     private final JsonMapper json;
+    private final LiveKitProperties properties;
 
-    public LiveKitWebhookController(LiveKitWebhookVerifier verifier, ScreenSlot slot, JsonMapper json) {
+    public LiveKitWebhookController(LiveKitWebhookVerifier verifier, ScreenSlot slot, JsonMapper json,
+                                    LiveKitProperties properties) {
         this.verifier = verifier;
         this.slot = slot;
         this.json = json;
+        this.properties = properties;
     }
 
     @PostMapping("/api/livekit/webhook")
@@ -44,6 +47,11 @@ public class LiveKitWebhookController {
         }
         WebhookEvent event = json.readValue(body, WebhookEvent.class);
         log.debug("webhook accepted: {}", event.event());
+        // Each environment has its own room (spec 0044); anything else isn't ours.
+        if (event.room() == null || !properties.room().equals(event.room().name())) {
+            log.debug("webhook ignored: room {} isn't {}", event.room() == null ? null : event.room().name(), properties.room());
+            return ResponseEntity.ok().build();
+        }
         Long userId = event.participant() == null ? null : userIdOf(event.participant().identity());
         if (event.event() != null && userId != null) {
             handle(event, userId);
@@ -86,7 +94,11 @@ public class LiveKitWebhookController {
 
     /** The parts of LiveKit's WebhookEvent we use. */
     @JsonIgnoreProperties(ignoreUnknown = true)
-    record WebhookEvent(String event, Participant participant, Track track) {
+    record WebhookEvent(String event, Room room, Participant participant, Track track) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record Room(String name) {
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)
