@@ -156,12 +156,103 @@ class ScreenControllerTest {
         assertThat(slot.current()).isEmpty();
     }
 
+    // ---- what the stream is sent with (spec 0086) ----
+
+    @Test
+    void everyoneSeesTheSettingsTheShareStartedWith() throws Exception {
+        mvc.perform(post("/api/screen/take").with(as("sub-friend")).with(csrf())
+                        .contentType("application/json")
+                        .content("{\"participantSid\":\"PA_l\",\"trackSid\":\"TR_s\",\"quality\":\"720p\",\"mode\":\"sharp\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.settings.quality").value("720p"))
+                .andExpect(jsonPath("$.settings.mode").value("sharp"));
+
+        mvc.perform(get("/api/screen").with(as("sub-admin")))
+                .andExpect(jsonPath("$.settings.quality").value("720p"))
+                .andExpect(jsonPath("$.settings.mode").value("sharp"));
+    }
+
+    @Test
+    void aShareWithoutSettingsIs1080pSmooth() throws Exception {
+        take("sub-friend")
+                .andExpect(jsonPath("$.settings.quality").value("1080p"))
+                .andExpect(jsonPath("$.settings.mode").value("smooth"));
+    }
+
+    @Test
+    void aMissingSettingTakesItsDefault() throws Exception {
+        mvc.perform(post("/api/screen/take").with(as("sub-friend")).with(csrf())
+                        .contentType("application/json")
+                        .content("{\"participantSid\":\"PA_l\",\"trackSid\":\"TR_s\",\"mode\":\"sharp\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.settings.quality").value("1080p"))
+                .andExpect(jsonPath("$.settings.mode").value("sharp"));
+    }
+
+    @Test
+    void nobodySharingMeansNoSettings() throws Exception {
+        mvc.perform(get("/api/screen").with(as("sub-friend")))
+                .andExpect(jsonPath("$.settings").doesNotExist());
+    }
+
+    @Test
+    void theSharerChangesTheSettingsAndEveryoneSeesIt() throws Exception {
+        take("sub-friend");
+
+        settings("sub-friend", "{\"quality\":\"480p\",\"mode\":\"sharp\"}")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.settings.quality").value("480p"));
+
+        mvc.perform(get("/api/screen").with(as("sub-admin")))
+                .andExpect(jsonPath("$.holder.name").value("Friend"))
+                .andExpect(jsonPath("$.settings.quality").value("480p"))
+                .andExpect(jsonPath("$.settings.mode").value("sharp"));
+    }
+
+    @Test
+    void someoneElseCannotChangeTheSettings() throws Exception {
+        take("sub-friend");
+
+        settings("sub-admin", "{\"quality\":\"480p\",\"mode\":\"smooth\"}")
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("Only the person sharing can change how their screen is sent."));
+        mvc.perform(get("/api/screen").with(as("sub-friend")))
+                .andExpect(jsonPath("$.settings.quality").value("1080p"));
+    }
+
+    @Test
+    void unknownSettingsAreRefused() throws Exception {
+        take("sub-friend");
+
+        settings("sub-friend", "{\"quality\":\"4k\",\"mode\":\"smooth\"}")
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.detail").value("Pick a quality of 1080p, 720p or 480p, and a mode of smooth or sharp."));
+        mvc.perform(post("/api/screen/take").with(as("sub-admin")).with(csrf())
+                        .contentType("application/json")
+                        .content("{\"participantSid\":\"PA_l\",\"trackSid\":\"TR_s\",\"quality\":\"720p\",\"mode\":\"blurry\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void changingTheSettingsNeedsTheCsrfToken() throws Exception {
+        take("sub-friend");
+
+        mvc.perform(post("/api/screen/settings").with(as("sub-friend"))
+                        .contentType("application/json").content("{\"quality\":\"480p\",\"mode\":\"smooth\"}"))
+                .andExpect(status().isForbidden());
+    }
+
     // ---- helpers ----
 
     private ResultActions take(String subject) throws Exception {
         return mvc.perform(post("/api/screen/take").with(as(subject)).with(csrf())
                 .contentType("application/json")
                 .content("{\"participantSid\":\"PA_" + subject + "\",\"trackSid\":\"TR_" + subject + "\"}"));
+    }
+
+    private ResultActions settings(String subject, String json) throws Exception {
+        return mvc.perform(post("/api/screen/settings").with(as(subject)).with(csrf())
+                .contentType("application/json").content(json));
     }
 
     private ResultActions release(String subject) throws Exception {

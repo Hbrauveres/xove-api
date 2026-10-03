@@ -28,6 +28,76 @@ class ScreenSlotTest {
         slot = new ScreenSlot(clock);
     }
 
+    // ---- what the stream is sent with (spec 0086) ----
+
+    @Test
+    void aShareStartsWithTheSettingsItWasTakenWith() {
+        slot.take(ANA, "Ana", null, ANA_LAPTOP, new StreamSettings("720p", "sharp"));
+
+        assertThat(slot.settings()).contains(new StreamSettings("720p", "sharp"));
+    }
+
+    @Test
+    void withoutSettingsAShareIs1080pSmooth() {
+        slot.take(ANA, "Ana", null, ANA_LAPTOP);
+
+        assertThat(slot.settings()).contains(StreamSettings.DEFAULT);
+        assertThat(StreamSettings.DEFAULT).isEqualTo(new StreamSettings("1080p", "smooth"));
+    }
+
+    @Test
+    void theHolderCanChangeTheSettingsWhileSharing() {
+        ScreenHolder before = slot.take(ANA, "Ana", null, ANA_LAPTOP);
+        clock.advance(Duration.ofMinutes(3));
+
+        slot.changeSettings(ANA, new StreamSettings("480p", "sharp"));
+
+        assertThat(slot.settings()).contains(new StreamSettings("480p", "sharp"));
+        assertThat(slot.current()).contains(before);
+    }
+
+    @Test
+    void someoneElseCannotChangeTheSettings() {
+        slot.take(ANA, "Ana", null, ANA_LAPTOP);
+
+        assertThatThrownBy(() -> slot.changeSettings(BRUNO, new StreamSettings("480p", "smooth")))
+                .isInstanceOf(NotTheHolderException.class);
+        assertThat(slot.settings()).contains(StreamSettings.DEFAULT);
+    }
+
+    @Test
+    void changingTheSettingsOfAnEmptySlotIsRefused() {
+        assertThatThrownBy(() -> slot.changeSettings(ANA, StreamSettings.DEFAULT))
+                .isInstanceOf(NotTheHolderException.class);
+    }
+
+    @Test
+    void aTakeoverStartsWithTheNewSharersSettings() {
+        slot.take(ANA, "Ana", null, ANA_LAPTOP, new StreamSettings("480p", "sharp"));
+
+        slot.take(BRUNO, "Bruno", null, BRUNO_LAPTOP, new StreamSettings("720p", "smooth"));
+
+        assertThat(slot.settings()).contains(new StreamSettings("720p", "smooth"));
+    }
+
+    @Test
+    void theSettingsGoWithTheShare() {
+        slot.take(ANA, "Ana", null, ANA_LAPTOP, new StreamSettings("480p", "sharp"));
+
+        slot.release(ANA);
+
+        assertThat(slot.settings()).isEmpty();
+    }
+
+    @Test
+    void onlyKnownQualitiesAndModesAreAccepted() {
+        assertThat(new StreamSettings("1080p", "smooth").isValid()).isTrue();
+        assertThat(new StreamSettings("480p", "sharp").isValid()).isTrue();
+        assertThat(new StreamSettings("4k", "smooth").isValid()).isFalse();
+        assertThat(new StreamSettings("720p", "blurry").isValid()).isFalse();
+        assertThat(new StreamSettings(null, "smooth").isValid()).isFalse();
+    }
+
     @Test
     void startsEmpty() {
         assertThat(slot.current()).isEmpty();
