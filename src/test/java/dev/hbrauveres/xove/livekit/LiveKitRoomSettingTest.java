@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.jayway.jsonpath.JsonPath;
 import com.nimbusds.jwt.SignedJWT;
 import dev.hbrauveres.xove.TestcontainersConfiguration;
+import dev.hbrauveres.xove.room.RoomSeats;
 import dev.hbrauveres.xove.user.User;
 import dev.hbrauveres.xove.user.UserRepository;
 import dev.hbrauveres.xove.user.UserService;
@@ -41,6 +42,7 @@ class LiveKitRoomSettingTest {
     @Autowired WebApplicationContext context;
     @Autowired UserService userService;
     @Autowired UserRepository users;
+    @Autowired RoomSeats seats;
 
     @Test
     void usesTheConfiguredRoom() throws Exception {
@@ -48,6 +50,8 @@ class LiveKitRoomSettingTest {
         User friend = userService.recordGoogleLogin("sub-friend", "friend@example.com", "Friend", null);
         friend.changeStatus(UserStatus.MEMBER);
         users.save(friend);
+        seats.clear();
+        seats.enter(friend.getId());
 
         String body = mvc.perform(post("/api/livekit/token")
                         .with(oidcLogin().idToken(t -> t.subject("sub-friend"))).with(csrf()))

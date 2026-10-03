@@ -41,6 +41,9 @@ management:
 
 xove:
   admin-emails: ${ADMIN_EMAILS:}
+  room:
+    # People in the room at once, sharers included: 1 to 20 (spec 0060). Staging uses fewer.
+    seats: ${XOVE_ROOM_SEATS:20}
   livekit:
     url: ${LIVEKIT_URL:}
     api-key: ${LIVEKIT_API_KEY:}

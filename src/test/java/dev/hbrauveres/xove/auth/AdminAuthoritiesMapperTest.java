@@ -15,7 +15,7 @@ import org.springframework.security.oauth2.core.oidc.user.OidcUserAuthority;
 class AdminAuthoritiesMapperTest {
 
     private final AdminAuthoritiesMapper mapper =
-            new AdminAuthoritiesMapper(new XoveProperties(List.of("Admin@Example.com")));
+            new AdminAuthoritiesMapper(new XoveProperties(List.of("Admin@Example.com"), null));
 
     @Test
     void adminEmailsGetTheAdminRole() {

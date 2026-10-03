@@ -11,6 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.jayway.jsonpath.JsonPath;
 import com.nimbusds.jwt.SignedJWT;
 import dev.hbrauveres.xove.TestcontainersConfiguration;
+import dev.hbrauveres.xove.room.RoomSeats;
 import dev.hbrauveres.xove.user.User;
 import dev.hbrauveres.xove.user.UserRepository;
 import dev.hbrauveres.xove.user.UserService;
@@ -41,6 +42,7 @@ class LiveKitControllerTest {
     @Autowired WebApplicationContext context;
     @Autowired UserService userService;
     @Autowired UserRepository users;
+    @Autowired RoomSeats seats;
 
     MockMvc mvc;
     User friend;
@@ -48,6 +50,7 @@ class LiveKitControllerTest {
     @BeforeEach
     void setUp() {
         mvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
+        seats.clear();
         friend = userService.recordGoogleLogin("sub-friend", "friend@example.com", "Friend Person", null);
         friend.changeStatus(UserStatus.MEMBER);
         users.save(friend);
@@ -70,8 +73,18 @@ class LiveKitControllerTest {
         mvc.perform(post("/api/livekit/token").with(as("sub-friend"))).andExpect(status().isForbidden());
     }
 
+    // Spec 0060, AC-8: the room holds only the people with a seat.
     @Test
-    void aMemberGetsWhereToConnectAndAToken() throws Exception {
+    void withoutASeatThereIsNoToken() throws Exception {
+        mvc.perform(post("/api/livekit/token").with(as("sub-friend")).with(csrf()))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.detail").value("Wait for your turn: the room is full."));
+    }
+
+    @Test
+    void aMemberWithASeatGetsWhereToConnectAndAToken() throws Exception {
+        seats.enter(friend.getId());
+
         String body = mvc.perform(post("/api/livekit/token").with(as("sub-friend")).with(csrf()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.url").value("wss://rtc.example.com"))

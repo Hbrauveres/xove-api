@@ -1,6 +1,7 @@
 package dev.hbrauveres.xove.livekit;
 
 import dev.hbrauveres.xove.auth.CurrentUser;
+import dev.hbrauveres.xove.room.RoomSeats;
 import dev.hbrauveres.xove.user.User;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -9,18 +10,21 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
-/** Hands members a token to join the video room. */
+/** Hands members with a seat a token to join the video room (spec 0060: the room holds only them). */
 @RestController
 public class LiveKitController {
 
     private final LiveKitTokens tokens;
     private final LiveKitProperties properties;
     private final CurrentUser currentUser;
+    private final RoomSeats seats;
 
-    public LiveKitController(LiveKitTokens tokens, LiveKitProperties properties, CurrentUser currentUser) {
+    public LiveKitController(LiveKitTokens tokens, LiveKitProperties properties, CurrentUser currentUser,
+                             RoomSeats seats) {
         this.tokens = tokens;
         this.properties = properties;
         this.currentUser = currentUser;
+        this.seats = seats;
     }
 
     @PostMapping("/api/livekit/token")
@@ -28,6 +32,9 @@ public class LiveKitController {
         User me = currentUser.member(google);
         if (!tokens.isConfigured()) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Video isn't set up on this server yet.");
+        }
+        if (!seats.isSeated(me.getId())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Wait for your turn: the room is full.");
         }
         String identity = identityOf(me);
         String name = me.getName() != null ? me.getName() : me.getEmail();
