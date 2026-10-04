@@ -239,10 +239,12 @@ class RoomSeatsTest {
         fillTheRoom();
         seats.enter(CAIO);
         seats.enter(DORA);
-        // Caio's connection drops: he stops polling, and keeps his place for 60 seconds.
+        // Caio's connection drops: he stops polling, and keeps his place for 90 seconds.
         seats.left(ANA, "PA_ana", true);
         wait(30);
 
+        assertThat(seats.enter(DORA)).isEqualTo(SeatStatus.waiting(2));
+        wait(30);
         assertThat(seats.enter(DORA)).isEqualTo(SeatStatus.waiting(2));
 
         wait(30);
@@ -307,12 +309,12 @@ class RoomSeatsTest {
     }
 
     @Test
-    void withoutPollsThePlaceIsKeptFor60Seconds() {
+    void withoutPollsThePlaceIsKeptFor90Seconds() {
         fillTheRoom();
         seats.enter(CAIO);
         seats.enter(DORA);
 
-        for (int i = 0; i < 29; i++) {
+        for (int i = 0; i < 44; i++) {
             wait(2);
             seats.enter(DORA);
         }
@@ -320,6 +322,20 @@ class RoomSeatsTest {
         wait(2);
 
         assertThat(seats.enter(DORA)).isEqualTo(SeatStatus.waiting(1));
+    }
+
+    // Chrome lets a tab hidden for 5 minutes poll about once a minute: it keeps its place.
+    @Test
+    void aBackgroundTabPollingOnceAMinuteKeepsItsPlace() {
+        fillTheRoom();
+        seats.enter(CAIO);
+        seats.enter(DORA);
+
+        for (int i = 0; i < 10; i++) {
+            wait(61);
+            seats.enter(DORA);
+            assertThat(seats.enter(CAIO)).isEqualTo(SeatStatus.waiting(1));
+        }
     }
 
     @Test

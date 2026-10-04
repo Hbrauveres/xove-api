@@ -21,7 +21,8 @@ import java.util.Optional;
  * - a seat whose person left is kept for them: 30 seconds after they closed the tab,
  *   60 seconds after their connection dropped; one never used, 60 seconds;
  * - a place in the queue is kept the same way: 30 seconds after "leave" (the tab
- *   closing), 60 seconds after the last poll;
+ *   closing), 90 seconds after the last poll (a tab in the background may poll only
+ *   about once a minute in Chrome: 90 seconds leaves it a margin);
  * - a free seat is offered to the first in the queue, and held for them for 60 seconds,
  *   even while they're away; they accept or cancel; with no answer they go to the
  *   end of the queue and the seat is offered to the next.
@@ -34,6 +35,8 @@ public class RoomSeats {
 
     static final Duration CLOSED_TAB = Duration.ofSeconds(30);
     static final Duration DROPPED = Duration.ofSeconds(60);
+    /** A waiting page that stopped polling: Chrome lets a hidden tab poll about once a minute. */
+    static final Duration QUEUE_SILENCE = Duration.ofSeconds(90);
     static final Duration NEVER_USED = Duration.ofSeconds(60);
     static final Duration OFFER = Duration.ofSeconds(60);
 
@@ -178,7 +181,7 @@ public class RoomSeats {
         Instant now = clock.instant();
         seats.values().removeIf(seat -> seat.until != null && !now.isBefore(seat.until));
         queue.removeIf(w -> (w.awayUntil != null && !now.isBefore(w.awayUntil))
-                || !now.isBefore(w.lastSeen.plus(DROPPED)));
+                || !now.isBefore(w.lastSeen.plus(QUEUE_SILENCE)));
         List<Waiting> unanswered = queue.stream()
                 .filter(w -> w.offerUntil != null && !now.isBefore(w.offerUntil))
                 .toList();
