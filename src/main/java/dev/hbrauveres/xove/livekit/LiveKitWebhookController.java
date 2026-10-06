@@ -3,6 +3,7 @@ package dev.hbrauveres.xove.livekit;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import dev.hbrauveres.xove.room.RoomSeats;
 import dev.hbrauveres.xove.stream.Streams;
+import dev.hbrauveres.xove.stream.Watching;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,14 +39,16 @@ public class LiveKitWebhookController {
     private final LiveKitWebhookVerifier verifier;
     private final Streams streams;
     private final RoomSeats seats;
+    private final Watching watching;
     private final JsonMapper json;
     private final LiveKitProperties properties;
 
-    public LiveKitWebhookController(LiveKitWebhookVerifier verifier, Streams streams, RoomSeats seats, JsonMapper json,
-                                    LiveKitProperties properties) {
+    public LiveKitWebhookController(LiveKitWebhookVerifier verifier, Streams streams, RoomSeats seats,
+                                    Watching watching, JsonMapper json, LiveKitProperties properties) {
         this.verifier = verifier;
         this.streams = streams;
         this.seats = seats;
+        this.watching = watching;
         this.json = json;
         this.properties = properties;
     }
@@ -82,6 +85,8 @@ public class LiveKitWebhookController {
                 String reason = event.participant().disconnectReason();
                 log.info("user {} left ({}), reason {}", userId, participantSid, reason);
                 seats.left(userId, participantSid, CLOSED_TAB.equals(reason));
+                // A page that's still there reports it again on its next poll (spec 0104).
+                watching.clear(userId);
             }
             case "track_unpublished" -> {
                 Track track = event.track();

@@ -38,6 +38,29 @@ class RoomSeatsTest {
         seats.joined(BRUNO, "PA_bruno");
     }
 
+    // ---- occupancy (spec 0104) ----
+
+    @Test
+    void tellsHowManySeatsAreTakenAndHowManyWait() {
+        assertThat(seats.occupancy()).isEqualTo(new Occupancy(2, 0, 0));
+
+        fillTheRoom();
+        seats.enter(CAIO);
+        seats.enter(DORA);
+
+        assertThat(seats.occupancy()).isEqualTo(new Occupancy(2, 2, 2));
+    }
+
+    @Test
+    void aKeptSeatStillCountsAsTaken() {
+        fillTheRoom();
+        seats.left(ANA, "PA_ana", true);
+
+        assertThat(seats.occupancy().taken()).isEqualTo(2);
+        wait(31);
+        assertThat(seats.occupancy().taken()).isEqualTo(1);
+    }
+
     // ---- seats ----
 
     @Test

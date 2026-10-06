@@ -171,6 +171,12 @@ public class RoomSeats {
         return seat == null ? Optional.empty() : Optional.ofNullable(seat.until);
     }
 
+    /** How full the room is, for the people panel (spec 0104). */
+    public synchronized Occupancy occupancy() {
+        tidy();
+        return new Occupancy(capacity, seats.size(), queue.size());
+    }
+
     private int free() {
         long offers = queue.stream().filter(w -> w.offerUntil != null).count();
         return (int) (capacity - seats.size() - offers);

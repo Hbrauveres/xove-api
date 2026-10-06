@@ -8,6 +8,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -42,6 +43,7 @@ class StreamsControllerTest {
     @Autowired UserRepository users;
     @Autowired Streams streams;
     @Autowired RoomSeats seats;
+    @Autowired Watching watching;
 
     MockMvc mvc;
 
@@ -50,6 +52,7 @@ class StreamsControllerTest {
         mvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
         streams.clear();
         seats.clear();
+        watching.reset();
 
         userService.recordGoogleLogin("sub-admin", "admin@example.com", "Admin", null);
         member("sub-friend", "friend@example.com", "Friend", "https://img/friend");
@@ -281,7 +284,87 @@ class StreamsControllerTest {
                 .andExpect(status().isForbidden());
     }
 
+    // ---- the room's seats and who watches what (spec 0104) ----
+
+    @Test
+    void theViewSaysHowFullTheRoomIs() throws Exception {
+        start("sub-m1", "screen").andExpect(status().isOk());
+        mvc.perform(post("/api/room/enter").with(as("sub-m2")).with(csrf()));
+
+        mvc.perform(get("/api/streams").with(as("sub-friend")))
+                .andExpect(jsonPath("$.seats.total").value(20))
+                .andExpect(jsonPath("$.seats.taken").value(2))
+                .andExpect(jsonPath("$.seats.waiting").value(0))
+                .andExpect(jsonPath("$.watching").isEmpty());
+    }
+
+    @Test
+    void everyoneSeesWhoWatchesWhichStream() throws Exception {
+        start("sub-m1", "screen");
+        Long m1 = idOf("sub-m1");
+        mvc.perform(post("/api/room/enter").with(as("sub-m2")).with(csrf()));
+
+        watch("sub-m2", "{\"sharerId\":" + m1 + ",\"kind\":\"screen\"}").andExpect(status().isNoContent());
+
+        mvc.perform(get("/api/streams").with(as("sub-friend")))
+                .andExpect(jsonPath("$.watching.length()").value(1))
+                .andExpect(jsonPath("$.watching[0].userId").value(idOf("sub-m2")))
+                .andExpect(jsonPath("$.watching[0].sharerId").value(m1))
+                .andExpect(jsonPath("$.watching[0].kind").value("screen"))
+                .andExpect(jsonPath("$.watching[0].mine").value(false));
+        mvc.perform(get("/api/streams").with(as("sub-m2"))).andExpect(jsonPath("$.watching[0].mine").value(true));
+    }
+
+    @Test
+    void anEmptyStageClearsWhatYouWatch() throws Exception {
+        start("sub-m1", "screen");
+        mvc.perform(post("/api/room/enter").with(as("sub-m2")).with(csrf()));
+        watch("sub-m2", "{\"sharerId\":" + idOf("sub-m1") + ",\"kind\":\"screen\"}");
+
+        watch("sub-m2", "{}").andExpect(status().isNoContent());
+
+        mvc.perform(get("/api/streams").with(as("sub-friend"))).andExpect(jsonPath("$.watching").isEmpty());
+    }
+
+    @Test
+    void aWatchFromSomeoneWithoutASeatIsNotListed() throws Exception {
+        start("sub-m1", "screen");
+
+        watch("sub-m3", "{\"sharerId\":" + idOf("sub-m1") + ",\"kind\":\"screen\"}").andExpect(status().isNoContent());
+
+        mvc.perform(get("/api/streams").with(as("sub-friend"))).andExpect(jsonPath("$.watching").isEmpty());
+        // Not even kept for later: seating them afterwards lists nothing.
+        mvc.perform(post("/api/room/enter").with(as("sub-m3")).with(csrf()));
+        mvc.perform(get("/api/streams").with(as("sub-friend"))).andExpect(jsonPath("$.watching").isEmpty());
+    }
+
+    @Test
+    void aWatchNeedsAKnownKindAndBothParts() throws Exception {
+        mvc.perform(post("/api/room/enter").with(as("sub-m2")).with(csrf()));
+
+        watch("sub-m2", "{\"sharerId\":1,\"kind\":\"microphone\"}").andExpect(status().isBadRequest());
+        watch("sub-m2", "{\"kind\":\"screen\"}").andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void reportingAWatchNeedsAMemberAndTheCsrfToken() throws Exception {
+        mvc.perform(put("/api/streams/watching").with(as("sub-m2"))
+                        .contentType("application/json").content("{}"))
+                .andExpect(status().isForbidden());
+        watch("sub-stranger", "{}").andExpect(status().isForbidden());
+    }
+
     // ---- helpers ----
+
+    private ResultActions watch(String subject, String json) throws Exception {
+        return mvc.perform(put("/api/streams/watching").with(as(subject)).with(csrf())
+                .contentType("application/json").content(json));
+    }
+
+    private Long idOf(String subject) {
+        return users.findByGoogleSubject(subject).orElseThrow().getId();
+    }
+
 
     private ResultActions start(String subject, String kind) throws Exception {
         return start(subject, kind, "");

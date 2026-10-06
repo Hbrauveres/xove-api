@@ -11,8 +11,10 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -25,11 +27,13 @@ public class StreamsController {
 
     private final Streams streams;
     private final RoomSeats seats;
+    private final Watching watching;
     private final CurrentUser currentUser;
 
-    public StreamsController(Streams streams, RoomSeats seats, CurrentUser currentUser) {
+    public StreamsController(Streams streams, RoomSeats seats, Watching watching, CurrentUser currentUser) {
         this.streams = streams;
         this.seats = seats;
+        this.watching = watching;
         this.currentUser = currentUser;
     }
 
@@ -84,12 +88,37 @@ public class StreamsController {
         return view(me);
     }
 
+    /**
+     * What's on my stage (spec 0104): a person's screen or camera, or nothing ({@code {}}) for
+     * an empty stage. Everyone sees it in the streams; only a seated person's is listed.
+     */
+    @PutMapping("/watching")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void watching(@AuthenticationPrincipal OidcUser google, @RequestBody WatchRequest request) {
+        User me = currentUser.member(google);
+        if (request.sharerId() == null && request.kind() == null) {
+            watching.clear(me.getId());
+            return;
+        }
+        if (request.sharerId() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Say whose stream you're watching.");
+        }
+        StreamKind kind = kindOf(request.kind());
+        // Only a seated person's watch is kept: anyone else's would never be listed anyway.
+        if (seats.isSeated(me.getId())) {
+            watching.watch(me.getId(), request.sharerId(), kind);
+        } else {
+            watching.clear(me.getId());
+        }
+    }
+
     private StreamsView view(User me) {
-        return StreamsView.of(streams, me.getId(), seats.isSeated(me.getId()));
+        return StreamsView.of(streams, me.getId(), seats.isSeated(me.getId()), seats.occupancy(),
+                watching.current(seats::isSeated, streams));
     }
 
     private static StreamKind kindOf(String kind) {
-        return StreamKind.of(kind)
+        return StreamKind.of(kind == null ? "" : kind)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, UNKNOWN_KIND));
     }
 

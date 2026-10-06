@@ -15,6 +15,7 @@ import dev.hbrauveres.xove.stream.Stream;
 import dev.hbrauveres.xove.stream.StreamKind;
 import dev.hbrauveres.xove.stream.StreamSettings;
 import dev.hbrauveres.xove.stream.Streams;
+import dev.hbrauveres.xove.stream.Watching;
 import dev.hbrauveres.xove.user.User;
 import dev.hbrauveres.xove.user.UserRepository;
 import dev.hbrauveres.xove.user.UserService;
@@ -51,6 +52,7 @@ class LiveKitWebhookControllerTest {
     @Autowired UserRepository users;
     @Autowired Streams streams;
     @Autowired RoomSeats seats;
+    @Autowired Watching watching;
 
     MockMvc mvc;
     User ana;
@@ -195,6 +197,23 @@ class LiveKitWebhookControllerTest {
                 .andExpect(status().isOk());
 
         assertThat(holder()).isEqualTo(ana.getId());
+    }
+
+    // ---- who watches what (spec 0104) ----
+
+    @Test
+    void leavingTheRoomForgetsWhatYouWatched() throws Exception {
+        watching.reset();
+        streams.start(bruno.getId(), "Bruno", null, StreamKind.SCREEN, new SharingConnection("PA_bruno", "TR_b"),
+                StreamSettings.defaultFor(StreamKind.SCREEN));
+        seats.enter(ana.getId());
+        send(joined(ana, "PA_ana"));
+        watching.watch(ana.getId(), bruno.getId(), StreamKind.SCREEN);
+        assertThat(watching.current(id -> true, streams)).hasSize(1);
+
+        send(left(ana, "PA_ana")).andExpect(status().isOk());
+
+        assertThat(watching.current(id -> true, streams)).isEmpty();
     }
 
     // ---- seats (spec 0060) ----

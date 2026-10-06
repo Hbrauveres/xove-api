@@ -12,4 +12,10 @@ class StreamsConfig {
     Streams streams() {
         return new Streams(Clock.systemUTC());
     }
+
+    /** Who has which stream on their stage (spec 0104). */
+    @Bean
+    Watching watching() {
+        return new Watching();
+    }
 }
