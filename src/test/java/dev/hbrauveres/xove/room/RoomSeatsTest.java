@@ -61,6 +61,52 @@ class RoomSeatsTest {
         assertThat(seats.occupancy().taken()).isEqualTo(1);
     }
 
+    // ---- arrivals (spec 0158) ----
+
+    @Test
+    void remembersWhenEachPersonArrived() {
+        Instant at = clock.instant();
+        seats.enter(ANA);
+        seats.joined(ANA, "PA_ana");
+        wait(90);
+        seats.enter(BRUNO);
+
+        assertThat(seats.arrivals()).containsOnly(
+                java.util.Map.entry(ANA, at), java.util.Map.entry(BRUNO, at.plusSeconds(90)));
+    }
+
+    @Test
+    void aReloadKeepsTheArrival() {
+        Instant at = clock.instant();
+        fillTheRoom();
+        wait(600);
+        seats.left(ANA, "PA_ana", true);
+        wait(10);
+        seats.enter(ANA);
+        seats.joined(ANA, "PA_ana2");
+
+        assertThat(seats.arrivals()).containsEntry(ANA, at);
+    }
+
+    @Test
+    void comingBackAfterTheSeatRanOutArrivesAgain() {
+        fillTheRoom();
+        seats.left(ANA, "PA_ana", true);
+        wait(31);
+        Instant back = clock.instant();
+        seats.enter(ANA);
+
+        assertThat(seats.arrivals()).containsEntry(ANA, back);
+    }
+
+    @Test
+    void nobodyWaitingIsListed() {
+        fillTheRoom();
+        seats.enter(CAIO);
+
+        assertThat(seats.arrivals()).containsOnlyKeys(ANA, BRUNO);
+    }
+
     // ---- seats ----
 
     @Test

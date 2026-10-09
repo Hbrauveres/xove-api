@@ -171,6 +171,17 @@ public class RoomSeats {
         return seat == null ? Optional.empty() : Optional.ofNullable(seat.until);
     }
 
+    /**
+     * When each seated person arrived (spec 0158): the moment their seat was first given. A
+     * reload keeps the seat, so it keeps the time; a seat that ran out starts again.
+     */
+    public synchronized Map<Long, Instant> arrivals() {
+        tidy();
+        Map<Long, Instant> since = new HashMap<>();
+        seats.forEach((userId, seat) -> since.put(userId, seat.since));
+        return since;
+    }
+
     /** How full the room is, for the people panel (spec 0104). */
     public synchronized Occupancy occupancy() {
         tidy();
@@ -229,14 +240,19 @@ public class RoomSeats {
         queue.clear();
     }
 
-    /** A seat: connected to LiveKit ({@code participantSid}, no deadline), or kept until {@code until}. */
+    /**
+     * A seat: connected to LiveKit ({@code participantSid}, no deadline), or kept until {@code until}.
+     * {@code since} is when it was given, for "here N min" (spec 0158).
+     */
     private static final class Seat {
         String participantSid;
         Instant until;
+        Instant since;
 
         static Seat reserved(Instant now) {
             Seat seat = new Seat();
             seat.until = now.plus(NEVER_USED);
+            seat.since = now;
             return seat;
         }
     }

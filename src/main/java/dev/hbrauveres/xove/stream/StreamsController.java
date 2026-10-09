@@ -3,6 +3,7 @@ package dev.hbrauveres.xove.stream;
 import dev.hbrauveres.xove.auth.CurrentUser;
 import dev.hbrauveres.xove.room.RoomSeats;
 import dev.hbrauveres.xove.user.User;
+import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -113,8 +114,10 @@ public class StreamsController {
     }
 
     private StreamsView view(User me) {
-        return StreamsView.of(streams, me.getId(), seats.isSeated(me.getId()), seats.occupancy(),
-                watching.current(seats::isSeated, streams));
+        boolean seated = seats.isSeated(me.getId());
+        // Who's here, and since when, only for someone in the room (spec 0158).
+        return StreamsView.of(streams, me.getId(), seated, seats.occupancy(),
+                watching.current(seats::isSeated, streams), seated ? seats.arrivals() : Map.of());
     }
 
     private static StreamKind kindOf(String kind) {
