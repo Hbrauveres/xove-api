@@ -1,0 +1,48 @@
+# The API on its own: what the server deploys as the app xove-api (spec 0063).
+# The whole stack, for local development and CI, is the root compose.yaml.
+# Settings come from xove-ops, only the groups this app gets (ADR-0062).
+
+services:
+  api:
+    image: ghcr.io/hbrauveres/xove-api:${IMAGE_TAG:-local}
+    build: .
+    container_name: xove-${APP_ENV:-prod}-api
+    restart: unless-stopped
+    mem_limit: 512m
+    # ${VAR:?…} marks a setting the app can't run without: Compose stops with an
+    # error instead of starting it empty. LiveKit and ADMIN_EMAILS are optional.
+    environment:
+      # The database runs outside this file (on servers, from the private xove-ops repo;
+      # locally and in CI, from compose.local.yaml): the API knows it only by POSTGRES_HOST.
+      SPRING_DATASOURCE_URL: jdbc:postgresql://${POSTGRES_HOST:?is required (built by shared-infra/ops/build-env)}:5432/${POSTGRES_DB:?is required (built by shared-infra/ops/build-env)}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:?is required (built by shared-infra/ops/build-env)}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:?is required (built by shared-infra/ops/build-env)}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:?is required (built by shared-infra/ops/build-env)}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:?is required (built by shared-infra/ops/build-env)}
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-}
+      LIVEKIT_URL: ${LIVEKIT_URL:-}
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-}
+      # This environment's room (staging xove-stage, production xove). LiveKit itself
+      # runs from the xove-ops repo, one server per environment (spec 0044).
+      LIVEKIT_ROOM: ${LIVEKIT_ROOM:-xove}
+      # People in the room at once, 1 to 20 (spec 0060); staging uses fewer to try the queue.
+      XOVE_ROOM_SEATS: ${XOVE_ROOM_SEATS:-20}
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/health | grep -q '\"status\":\"UP\"'"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 90s
+    networks:
+      - web
+      - db
+
+networks:
+  web:
+    external: true
+  # The environment's private database network: only the API and its database
+  # join it (spec 0062).
+  db:
+    external: true
+    name: xove-${APP_ENV:-prod}-db
