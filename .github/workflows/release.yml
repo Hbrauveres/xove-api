@@ -1,0 +1,297 @@
+# Production release: a version tag (vX.Y.Z) on a commit of main releases the API
+# to https://xove.app. Nobody deploys production by hand.
+#
+#   1 · Check the release        the tag is vX.Y.Z on main; the commit's stage release was green; its image exists
+#   2 · Tag the image            the commit's sha-<12> image also gets vX.Y.Z (the same image, no rebuild)
+#   3 · Deploy production        through the API's production key; an unhealthy version never serves
+#   4 · Check production         https://xove.app/api/health answers UP from the internet
+#   5 · Roll back production     only when the check fails; the "Run workflow" button runs this stage alone
+#   6 · GitHub Release           notes of what changed (a pre-release for v0.0.x)
+#   Notify Discord               every result
+#
+# The version rule (the API and the web app are released separately, so they can run
+# at different versions): the API changes first, and stays compatible with the web app
+# that's live. New fields and endpoints are fine; renaming or removing one needs a
+# release where both exist. A web release that needs a new API field is tagged only
+# once the API version with it is live in production.
+#
+# Full explanation: docs/pipeline.md in the xove-workspace repo
+
+name: Production release
+
+on:
+  push:
+    tags: ["v*"]
+  # The "Run workflow" button: rolls the API back to the version that ran before.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-release
+  # Releases and rollbacks run one at a time; a running one is never cancelled.
+  # GitHub keeps only one run waiting: a newer one replaces it (and that one posts nothing).
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/hbrauveres/xove-api
+  SITE: https://xove.app
+
+jobs:
+  # ---------------------------------------------------------------- stage 1
+  verify:
+    name: 1 · Check the release
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read   # to read the commit's stage release
+    outputs:
+      tag: ${{ steps.image.outputs.tag }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0   # to see whether the tagged commit is on main
+
+      - name: The tag is a version (vX.Y.Z) on a commit of main
+        run: |
+          if [[ ! "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::$GITHUB_REF_NAME isn't a version tag like v1.2.3"; exit 1
+          fi
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "::error::${GITHUB_SHA::12} isn't on main; only merged commits are released"; exit 1
+          fi
+
+      - name: The commit's stage release was green
+        # Its image was built, tested, scanned and ran healthy on staging.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          green=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/stage.yml/runs?head_sha=$GITHUB_SHA&status=success&event=push&branch=main" --jq .total_count)
+          if [[ "$green" == 0 ]]; then
+            echo "::error::${GITHUB_SHA::12} never passed a stage release; release a commit that runs on staging"; exit 1
+          fi
+
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Its image is in the registry
+        id: image
+        run: |
+          tag="sha-${GITHUB_SHA::12}"
+          docker buildx imagetools inspect "$IMAGE:$tag" >/dev/null \
+            || { echo "::error::$IMAGE:$tag is missing"; exit 1; }
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+  # ---------------------------------------------------------------- stage 2
+  promote:
+    name: 2 · Tag the image
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      packages: write
+    env:
+      TAG: ${{ needs.verify.outputs.tag }}
+    steps:
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Tag the image with the version
+        # The same image (same digest) under a second name; nothing is rebuilt.
+        run: |
+          docker buildx imagetools create --prefer-index=false -t "$IMAGE:$GITHUB_REF_NAME" "$IMAGE:$TAG"
+          echo "\`$TAG\` is also \`$GITHUB_REF_NAME\`." >> "$GITHUB_STEP_SUMMARY"
+
+  # ---------------------------------------------------------------- stage 3
+  # Production's own key: on the VPS it can only run the deploy tool for the API on
+  # production (a forced command).
+  deploy:
+    name: 3 · Deploy production
+    needs: promote
+    uses: ./.github/workflows/deploy.yml
+    with:
+      app: xove-api
+      key: deploy-ssh-api-prod
+      command: deploy ${{ github.sha }}
+    secrets:
+      OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+
+  # ---------------------------------------------------------------- stage 4
+  check-production:
+    name: 4 · Check production
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: The API answers from the internet
+        # Up to 2 minutes: the API says it's up.
+        run: |
+          for attempt in $(seq 1 24); do
+            if curl -fsS --max-time 10 "$SITE/api/health" | grep -q '"status":"UP"'; then
+              echo "$SITE/api/health answers (attempt $attempt)"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::$SITE/api/health didn't answer UP for 2 minutes"
+          exit 1
+
+  # ---------------------------------------------------------------- stage 5
+  # When the check fails after a release, or alone from the "Run workflow" button on
+  # main. A failed deploy isn't rolled back here: its version never served.
+  rollback:
+    name: 5 · Roll back production
+    needs: check-production
+    if: >-
+      always() && (
+        (github.event_name == 'push' && needs.check-production.result == 'failure') ||
+        (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+      )
+    uses: ./.github/workflows/deploy.yml
+    with:
+      app: xove-api
+      key: deploy-ssh-api-prod
+      command: rollback
+    secrets:
+      OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+
+  check-rollback:
+    name: 5 · Check production after the rollback
+    needs: rollback
+    if: always() && needs.rollback.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: The API answers again
+        run: |
+          for attempt in $(seq 1 24); do
+            if curl -fsS --max-time 10 "$SITE/api/health" | grep -q '"status":"UP"'; then
+              echo "$SITE/api/health answers (attempt $attempt)"; exit 0
+            fi
+            sleep 5
+          done
+          echo "::error::$SITE/api/health didn't answer after the rollback"; exit 1
+
+  # ---------------------------------------------------------------- stage 6
+  github-release:
+    name: 6 · GitHub Release
+    needs: check-production
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+    steps:
+      - name: Create the GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # v0.0.x versions are test releases (no backups yet): marked as pre-releases.
+        run: |
+          flags=()
+          if [[ "$GITHUB_REF_NAME" == v0.0.* ]]; then flags+=(--prerelease); fi
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag \
+            --title "$GITHUB_REF_NAME" --generate-notes "${flags[@]}"
+
+  # ---------------------------------------------------------------- notify
+  notify:
+    name: Notify Discord
+    needs: [verify, promote, deploy, check-production, rollback, check-rollback, github-release]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Load the Discord webhook from 1Password
+        id: vault
+        uses: 1password/load-secrets-action@70062d7a876d3eb6334754fa26efd2fbd90c32f2 # v5.0.1
+        with:
+          version: 2.39.0
+          export-env: false
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          DISCORD_WEBHOOK_URL: op://Xove API CI/discord-webhook/password
+
+      - name: Post the result to Discord
+        env:
+          WEBHOOK: ${{ steps.vault.outputs.DISCORD_WEBHOOK_URL }}
+          EVENT: ${{ github.event_name }}
+          VERIFY: ${{ needs.verify.result }}
+          PROMOTE: ${{ needs.promote.result }}
+          DEPLOY: ${{ needs.deploy.result }}
+          CHECK: ${{ needs.check-production.result }}
+          ROLLBACK: ${{ needs.rollback.result }}
+          ROLLBACK_CHECK: ${{ needs.check-rollback.result }}
+          RELEASE: ${{ needs.github-release.result }}
+        run: |
+          if [[ -z "$WEBHOOK" ]]; then
+            echo "::warning::DISCORD_WEBHOOK_URL is not set; no notification sent."
+            exit 0
+          fi
+
+          icon() {
+            case "$1" in
+              success) echo "✅" ;; failure) echo "❌" ;; cancelled) echo "⚪" ;; *) echo "⏭️" ;;
+            esac
+          }
+
+          rolled_back() { [[ "$ROLLBACK" == success && "$ROLLBACK_CHECK" == success ]]; }
+          rollback_stages="$(icon "$ROLLBACK") Roll back  $(icon "$ROLLBACK_CHECK") Check"
+
+          if [[ "$EVENT" == "workflow_dispatch" ]]; then
+            if [[ "$ROLLBACK" == skipped ]]; then
+              title="⏭️ API rollback skipped: run it from main"; color=9807270
+            elif rolled_back; then
+              title="↩️ Production API rolled back"; color=15105570
+            else
+              title="❌ Production API rollback failed: check the server"; color=15158332
+            fi
+            stages="$rollback_stages"
+          else
+            if [[ "$CHECK" == "success" ]]; then
+              title="✅ API production release: $GITHUB_REF_NAME is live"; color=3066993
+            elif [[ "$CHECK" == "failure" ]] && rolled_back; then
+              title="❌ API production release $GITHUB_REF_NAME failed its check; rolled back"; color=15158332
+            elif [[ "$CHECK" == "failure" || "$CHECK" == "cancelled" ]]; then
+              title="❌ API production release $GITHUB_REF_NAME failed its check and wasn't rolled back: production may be broken, check the server"; color=15158332
+            elif [[ "$DEPLOY" == "failure" || "$DEPLOY" == "cancelled" ]]; then
+              title="❌ API production release $GITHUB_REF_NAME failed to deploy. See the run log (the previous version still serves, unless it says otherwise)"; color=15158332
+            elif [[ "$VERIFY" == "cancelled" || "$PROMOTE" == "cancelled" ]]; then
+              title="⚪ API production release $GITHUB_REF_NAME cancelled"; color=9807270
+            else
+              title="❌ API production release $GITHUB_REF_NAME failed; production didn't change"; color=15158332
+            fi
+            stages="$(icon "$VERIFY") Check release  $(icon "$PROMOTE") Tag image  $(icon "$DEPLOY") Deploy  $(icon "$CHECK") Check production  $rollback_stages  $(icon "$RELEASE") GitHub Release"
+          fi
+
+          run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          commit_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$GITHUB_SHA"
+
+          jq -n \
+            --arg title "$title" --argjson color "$color" \
+            --arg commit "${GITHUB_SHA::12}" --arg commit_url "$commit_url" \
+            --arg run_url "$run_url" --arg stages "$stages" --arg actor "$GITHUB_ACTOR" \
+            '{
+              username: "Xovê pipeline",
+              allowed_mentions: { parse: [] },
+              embeds: [{
+                title: $title,
+                url: $run_url,
+                color: $color,
+                description: ("[`" + $commit + "`](" + $commit_url + ") — " + $actor),
+                fields: [
+                  { name: "Stages", value: $stages },
+                  { name: "Links", value: ("[Run](" + $run_url + ") · [Production](https://xove.app)") }
+                ]
+              }]
+            }' > payload.json
+
+          curl --fail --silent --show-error \
+            -H "Content-Type: application/json" \
+            --data @payload.json "$WEBHOOK"
