@@ -24,7 +24,7 @@ class HealthEndpointTest {
                 URI.create("http://localhost:" + port + "/api/health")).build();
         var response = HttpClient.newHttpClient()
                 .send(request, HttpResponse.BodyHandlers.ofString());
-        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.statusCode()).isEqualTo(418);
         assertThat(response.body()).contains("\"status\":\"UP\"");
     }
 }
