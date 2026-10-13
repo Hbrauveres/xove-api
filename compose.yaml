@@ -1,5 +1,5 @@
 # The API on its own: what the server deploys as the app xove-api (spec 0063).
-# The whole stack, for local development and CI, is the root compose.yaml.
+# Locally and in the checks, compose.local.yaml adds a throwaway database.
 # Settings come from xove-ops, only the groups this app gets (ADR-0062).
 
 services:

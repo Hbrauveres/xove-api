@@ -1,0 +1,36 @@
+# The API with a throwaway database, locally and in the checks' "Validate build":
+# compose.yaml plus this file. The servers never read it; their database runs
+# from the private xove-ops repo (spec 0062).
+#
+#   docker network create web                       # once
+#   docker network create "xove-${APP_ENV}-db"       # once per APP_ENV
+#   docker compose -f compose.yaml -f compose.local.yaml up -d --build
+#
+# Set POSTGRES_HOST=db: the API finds this database by its service name.
+
+services:
+  db:
+    image: postgres:17-alpine
+    container_name: xove-${APP_ENV:-prod}-db
+    mem_limit: 256m
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:?is required}
+      POSTGRES_USER: ${POSTGRES_USER:?is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?is required}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - db
+
+  api:
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  db_data:
