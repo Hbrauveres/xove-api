@@ -1,0 +1,107 @@
+# The API's deploy or rollback on the VPS, through its own key (spec 0063).
+# Called by stage.yml and release.yml, never on its own: only they pass the
+# 1Password token, and branch checks never get it.
+#
+# On the VPS the key can only run shared-infra's ops/deploy.sh for its app and
+# environment (a forced command); `command` is its argument: "deploy <sha>",
+# or "rollback". The VPS starts the version next to the serving one and moves
+# traffic to it only once it's healthy; an unhealthy version never serves.
+
+name: Deploy the API
+
+on:
+  workflow_call:
+    inputs:
+      app:
+        description: "The app on the VPS: xove-api"
+        type: string
+        required: true
+      key:
+        description: "The 1Password item in Xove API CI holding the deploy key (deploy-ssh-api or deploy-ssh-api-prod)"
+        type: string
+        required: true
+      command:
+        description: '"deploy <sha>" or "rollback"'
+        type: string
+        required: true
+    secrets:
+      OP_SERVICE_ACCOUNT_TOKEN:
+        required: true
+    outputs:
+      unhealthy:
+        description: "true when the new version ran and wasn't healthy (exit 2)"
+        value: ${{ jobs.run.outputs.unhealthy }}
+
+permissions:
+  contents: read
+
+jobs:
+  run:
+    name: ${{ inputs.app }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      unhealthy: ${{ steps.run.outputs.unhealthy }}
+    steps:
+      # Secrets come from the 1Password vault "Xove API CI" (ADR-0065); the only
+      # secret stored in GitHub is the read-only token of the xove-api-ci service account.
+      - name: Load the app's deploy key from 1Password
+        id: vault
+        uses: 1password/load-secrets-action@70062d7a876d3eb6334754fa26efd2fbd90c32f2 # v5.0.1
+        with:
+          version: 2.39.0
+          # Values only as this step's (masked) outputs, never in the job's environment.
+          export-env: false
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          DEPLOY_SSH_KEY: op://Xove API CI/${{ inputs.key }}/private_key?ssh-format=openssh
+          DEPLOY_KNOWN_HOSTS: op://Xove API CI/${{ inputs.key }}/known-hosts
+          DEPLOY_HOST: op://Xove API CI/${{ inputs.key }}/host
+          DEPLOY_PORT: op://Xove API CI/${{ inputs.key }}/port
+          DEPLOY_USER: op://Xove API CI/${{ inputs.key }}/user
+
+      - name: Set up the deploy key
+        env:
+          DEPLOY_SSH_KEY: ${{ steps.vault.outputs.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ steps.vault.outputs.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          # Keys saved in the Windows 1Password app come with \r\n line endings, which ssh can't read.
+          printf '%s\n' "$DEPLOY_SSH_KEY" | tr -d '\r' > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" | tr -d '\r' > ~/.ssh/known_hosts
+
+      - name: ${{ inputs.command }} (${{ inputs.app }})
+        id: run
+        env:
+          DEPLOY_HOST: ${{ steps.vault.outputs.DEPLOY_HOST }}
+          DEPLOY_PORT: ${{ steps.vault.outputs.DEPLOY_PORT }}
+          DEPLOY_USER: ${{ steps.vault.outputs.DEPLOY_USER }}
+          COMMAND: ${{ inputs.command }}
+          APP: ${{ inputs.app }}
+        run: |
+          # Up to 5 connection attempts, 20 s each: a passing network problem between
+          # the runner and the VPS doesn't fail the release. Only connecting is retried;
+          # the command is sent once, when a connection exists.
+          # Exit 2 means the new version ran and wasn't healthy: only then are its
+          # images deleted (stage.yml). Any other failure (refused, connection) changed nothing.
+          # This step always succeeds and hands the result to the next one, so the
+          # job's outputs reach the caller whatever happened.
+          status=0
+          ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" \
+            -o IdentitiesOnly=yes -o BatchMode=yes -o ServerAliveInterval=30 \
+            -o ConnectTimeout=20 -o ConnectionAttempts=5 \
+            "$DEPLOY_USER@$DEPLOY_HOST" "$COMMAND" || status=$?
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          if [[ $status == 2 ]]; then echo "unhealthy=true" >> "$GITHUB_OUTPUT"; fi
+          if [[ $status == 0 ]]; then
+            echo "\`$APP\`: $COMMAND done." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "\`$APP\`: $COMMAND failed (exit $status)." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Fail when it failed
+        if: steps.run.outputs.status != '0'
+        env:
+          STATUS: ${{ steps.run.outputs.status }}
+        run: exit "${STATUS:-1}"
