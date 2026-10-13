@@ -31,3 +31,7 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Settings files hold secrets; never commit one.
+.env
+.env.*

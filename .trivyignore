@@ -1,0 +1,5 @@
+# Vulnerabilities the pipeline's scan should skip, one ID per line.
+# Only add one when there's no fix yet AND it doesn't affect Xovê, and always
+# write why and when to check again, e.g.:
+#
+# CVE-2026-00000  # not reachable: we don't use X. Recheck 2026-11-01.
