@@ -194,11 +194,18 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         # v0.0.x versions are test releases (no backups yet): marked as pre-releases.
+        # The first release has no earlier one to compare with, and generated notes
+        # would list the whole history brought over from xove: it gets a note instead.
         run: |
           flags=()
           if [[ "$GITHUB_REF_NAME" == v0.0.* ]]; then flags+=(--prerelease); fi
+          if [[ "$(gh release list --repo "$GITHUB_REPOSITORY" --limit 1 --json tagName --jq length)" == 0 ]]; then
+            flags+=(--notes "The API's first release from its own repo. The code is the same as xove's last API release (xove v0.0.14); its history came over from xove, where \`(Hbrauveres/xove#n)\` in a commit is that repo's pull request.")
+          else
+            flags+=(--generate-notes)
+          fi
           gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag \
-            --title "$GITHUB_REF_NAME" --generate-notes "${flags[@]}"
+            --title "$GITHUB_REF_NAME" "${flags[@]}"
 
   # ---------------------------------------------------------------- notify
   notify:
