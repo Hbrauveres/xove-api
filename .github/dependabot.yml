@@ -2,22 +2,17 @@
 # so a green PR is safe to merge. Grouped per ecosystem to keep the noise down.
 # A new version waits 7 days before it's proposed, so a compromised release has
 # time to be caught and pulled (security updates don't wait).
-#
-# Maven and Docker are paused (limit 0) while the API is frozen: xove still
-# deploys it from its own copy until the releases move here (xove-workspace#82).
 version: 2
 updates:
   - package-ecosystem: maven
     directory: /
     schedule: { interval: weekly }
-    open-pull-requests-limit: 0
     cooldown: { default-days: 7 }
     groups: { maven: { patterns: ["*"] } }
 
   - package-ecosystem: docker
     directory: /
     schedule: { interval: weekly }
-    open-pull-requests-limit: 0
     cooldown: { default-days: 7 }
     # Java stays on its LTS line; moving to the next LTS is a deliberate change,
     # not a Dependabot bump.

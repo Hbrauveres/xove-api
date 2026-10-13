@@ -16,7 +16,7 @@ The API of [Xovê](https://xove.app): a private room where invited friends share
 | Code | Java 21, Spring Boot 4 (Web MVC, Security, Data JPA, Actuator), Maven |
 | Data | PostgreSQL 17, schema by Flyway, server-side sessions (Spring Session JDBC) |
 | Video | Tokens and webhooks for a self-hosted [LiveKit](https://livekit.io) server (a WebRTC SFU) |
-| Checks | GitHub Actions on every push: build the image, start it with a database and check it's healthy, JUnit with Testcontainers, Trivy and Semgrep |
+| Delivery | GitHub Actions: on every push, build the image, start it with a database and check it's healthy, JUnit with Testcontainers, Trivy and Semgrep; on every merge, publish it and deploy it to staging, where a new version starts next to the serving one and takes over only once it's healthy; a version tag releases it to production, with a rollback button |
 
 ```mermaid
 flowchart LR

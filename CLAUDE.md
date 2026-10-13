@@ -6,7 +6,7 @@ This repo's own `docs/` (architecture, API, getting started, testing) and `READM
 
 Specific to this repo:
 
-- **Frozen until xove-workspace#82:** `xove` still builds and deploys the API from its own `api/` folder. Until the releases move here, the API doesn't change in either repo (no features, fixes or Dependabot merges), so the two copies stay the same.
+- Every merge to `main` releases the API to staging (`stage.yml`); a version tag `vX.Y.Z` releases it to production (`release.yml`). The API changes first: see the version rule in `release.yml`'s header.
 - Tests: `./mvnw test` (Docker running, for Testcontainers).
 - Never push to `main`; PRs are squash-merged with a conventional-commit title.
 - Never edit a Flyway migration that already ran.
