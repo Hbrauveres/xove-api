@@ -22,15 +22,15 @@ Xovê is invite-only: anyone with a Google account can sign in and ask, but only
 
 ## Signing in with Google
 
-- **OpenID Connect through Spring Security** (`oauth2Login`): the `state` parameter, PKCE and a new session id after sign-in come from the framework. Every URL is under `/api` (`/api/oauth2/authorization/google`, `/api/login/oauth2/code/google`), so the proxy sends them to the API. Proven by `AuthTest.loginStartsAtGoogleWithOurCallback`.
-- **Only verified emails.** An account whose email Google hasn't verified is signed out again and sent back (`LoginSuccessHandler`). `LoginSuccessHandlerTest.unverifiedEmailsAreTurnedAway`.
-- **A person is Google's id, not their email.** The user is found by Google's `sub` (`google_subject`), which never changes; signing in again updates the same user. `AuthTest.repeatedLoginsUpdateTheSameUser`.
+- **OpenID Connect through Spring Security** (`oauth2Login`): the `state` parameter, PKCE and a new session id after sign-in come from the framework, not from this code. Every URL is under `/api` (`/api/oauth2/authorization/google`, `/api/login/oauth2/code/google`), so the proxy sends them to the API: `AuthTest.loginStartsAtGoogleWithOurCallback`.
+- **Only verified emails.** An account whose email Google hasn't verified is signed out again and sent back to `/?error=email-not-verified` (`LoginSuccessHandler`). `LoginSuccessHandlerTest.unverifiedEmailsAreTurnedAway` checks where it's sent.
+- **A person is Google's id.** The user is found by Google's `sub` (`google_subject`), which never changes; signing in again updates the same user's name and picture. `AuthTest.repeatedLoginsUpdateTheSameUser`. A Google account the API doesn't know yet is matched by email instead (see [Known trust boundaries](#known-trust-boundaries)).
 - After sign-in, members go to `/room` and everyone else to `/request-access`. `LoginSuccessHandlerTest.membersGoToTheRoom`, `nonMembersGoToRequestAccess`.
 
 ## Sessions
 
 - **Kept in PostgreSQL** (Spring Session JDBC), so they survive restarts and can be ended from the server. The browser holds only an id.
-- **The cookie** `XOVE_SESSION` is `HttpOnly` (scripts can't read it), `Secure` (HTTPS only) and `SameSite=Lax` (not sent on requests started by other sites, except plain navigation). A session lasts 30 days without use (`application.yml`).
+- **The cookie** `XOVE_SESSION` is `HttpOnly` (scripts can't read it), `Secure` (HTTPS only) and `SameSite=Lax` (not sent on requests started by other sites, except plain navigation). On the server a session lasts 30 days without use (`application.yml`); the cookie itself has no expiry, so it ends when the browser does.
 - **Logging out** (`POST /api/auth/logout`) ends the session and answers 204; it needs the CSRF token like any change. `AuthTest.logoutRequiresCsrfToken`.
 - **Removing a member** sets them back to `NONE` and deletes every session of theirs, so they're signed out on every device at once (`AccessService.removeMember`). `AccessFlowTest.removingAMemberRevokesAccessAndSignsThemOut`.
 - **An API answers 401**, it never redirects to a login page: the web app decides what to show. `AuthTest.meRequiresLogin`.
@@ -95,4 +95,5 @@ Accepted for a small group of friends, and written down so they're decisions, no
 
 - **The 6-stream limit isn't LiveKit's.** Any seated member's token may publish a screen and a camera; the limit is enforced by the API's list and the web app.
 - **A token outlives a seat.** It stays valid for its hour, so someone whose seat ran out could rejoin LiveKit with an old one until it expires.
+- **A new Google account with a known email takes over that user.** Signing in with a Google account the API doesn't know yet matches an existing user by email and links the new account to it. Normally only one Google account holds a given email at a time, so this mostly matters for accounts created before Google's id was stored, or an email that moved to a new Google account.
 - **After an API restart, the API takes a page's word** for its LiveKit connection when it asks for its seat again, so a member could keep a seat they don't use.

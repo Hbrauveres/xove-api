@@ -18,7 +18,7 @@ Three kinds, from fastest to slowest. Each one tests what it must at the lowest 
 
 No Spring, no database: a class and its rules. Used for the room's logic (`RoomSeats`, `Streams`, `Watching`) and LiveKit's tokens and signatures (`LiveKitTokens`, `LiveKitWebhookVerifier`). They run in milliseconds.
 
-Time is a constructor argument: the tests pass a `MutableClock` and move it, so a 30-second rule is tested without waiting 30 seconds. From `RoomSeatsTest` (two seats; Ana and Bruno are in, Caio waits):
+Time is a constructor argument of `RoomSeats` and `Streams`: the tests pass a `MutableClock` and move it, so a 30-second rule is tested without waiting 30 seconds. From `RoomSeatsTest` (two seats; Ana and Bruno are in, Caio waits):
 
 ```java
 @Test
@@ -61,7 +61,7 @@ void removingAMemberRevokesAccessAndSignsThemOut() throws Exception {
 }
 ```
 
-`asAdmin()` is `oidcLogin()` with an email listed in `xove.admin-emails`. Also: `StreamsControllerTest`, `RoomControllerTest`, `LiveKitControllerTest`, `LiveKitWebhookControllerTest` (events signed with a test key by `WebhookSigner`), `AuthTest`.
+`asAdmin()` is `oidcLogin()` as the admin's Google id with the `ADMIN` role; the test class lists the admin's email in `xove.admin-emails` (`@TestPropertySource`) and signs the admin in once before each test. Also: `StreamsControllerTest`, `RoomControllerTest`, `LiveKitControllerTest`, `LiveKitWebhookControllerTest` (events signed with a test key by `WebhookSigner`), `AuthTest`.
 
 ### Persistence tests
 
@@ -91,7 +91,7 @@ Docker must be running for Testcontainers. The first run downloads the `postgres
 ./mvnw test -Dtest=AccessFlowTest    # one class
 ```
 
-Most Spring tests are `@Transactional`, so each one rolls back its data and they can run in any order. A test that changes Spring's configuration (like `CsrfCookieTest`) gets its own application context with `@DirtiesContext`.
+Most Spring tests are `@Transactional`, so each one rolls back its data and they can run in any order. Test classes with different settings (`@TestPropertySource`) get their own application context automatically. `CsrfCookieTest` asks for a fresh one (`@DirtiesContext`), because the other classes' `csrf()` helper replaces the CSRF token store with one that never writes cookies, and this test checks the cookie.
 
 ## What a good test here looks like
 

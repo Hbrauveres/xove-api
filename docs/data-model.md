@@ -50,7 +50,7 @@ erDiagram
 | `access_requests` | Each request to get in, with its optional message and who decided it, when | `V1` |
 | `spring_session`, `spring_session_attributes` | Server-side sessions, in [Spring Session JDBC](https://docs.spring.io/spring-session/reference/)'s official schema | `V2` |
 
-**Why `google_subject`.** People sign in with Google, and an email can change; Google's `sub` can't. The user is found by `google_subject` first, and by email only for an account created before `V2` (`UserService.recordGoogleLogin`), which then gets its `google_subject` linked.
+**Why `google_subject`.** People sign in with Google, and an email can change; Google's `sub` can't. The user is found by `google_subject`, or else by email, and the Google account is then linked to that user (`UserService.recordGoogleLogin`). The email fallback is meant for accounts created before `V2`, but it runs for any Google account the API doesn't know yet ([Security](security.md#known-trust-boundaries)).
 
 **Why sessions in the database.** Removing a member deletes their sessions by `principal_name`, so they're signed out everywhere at once ([Security](security.md#sessions)). A restart or a deploy signs nobody out.
 
@@ -81,8 +81,10 @@ The schema is created and changed only by [Flyway](https://documentation.red-gat
 
 | Release | Migration | Code |
 | --- | --- | --- |
-| 1 | `V3`: add `display_name`, copy `name` into it | Writes both columns, reads `display_name` |
-| 2 | none | Writes and reads only `display_name`; the entity no longer maps `name` |
-| 3 | `V4`: drop `name` | — |
+| 1 | `V3`: add `display_name`, copy `name` into it | Writes both columns, reads `display_name` and falls back to `name` when it's empty |
+| 2 | `V4`: copy `name` into `display_name` again where it's empty | Writes and reads only `display_name`; the entity no longer maps `name` |
+| 3 | `V5`: drop `name` | — |
+
+Release 1 falls back to `name`, and release 2 copies again, because the old code keeps writing only `name` while both versions run during the deploy, or after a rollback of release 1.
 
 After each release, the previous one still works against the database, so any one of them can be rolled back. This is often called *expand and contract*.

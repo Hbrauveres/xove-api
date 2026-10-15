@@ -35,6 +35,7 @@ One package per part of the domain, under `dev.hbrauveres.xove`. Each holds its 
 
 | Package | Owns | Main classes |
 | --- | --- | --- |
+| *(root)* | Starting the app (`XoveApiApplication`) | `XoveApiApplication` |
 | `auth` | What happens after Google confirms who you are, `/api/me`, turning the signed-in account into a `User` | `LoginSuccessHandler`, `AdminAuthoritiesMapper`, `CurrentUser`, `MeController` |
 | `user` | Users and their status (`NONE`, `PENDING`, `MEMBER`, `DECLINED`) | `User`, `UserRepository`, `UserService` |
 | `access` | Every rule about who gets in: requesting, approving, declining, removing | `AccessService`, `AccessRequestController`, `AccessRequest` |
@@ -44,7 +45,7 @@ One package per part of the domain, under `dev.hbrauveres.xove`. Each holds its 
 | `livekit` | Tokens to join the video room, and LiveKit's webhooks | `LiveKitTokens`, `LiveKitController`, `LiveKitWebhookVerifier`, `LiveKitWebhookController` |
 | `config` | Security and the app's settings | `SecurityConfig`, `XoveProperties` |
 
-**The rules are plain Java.** `RoomSeats`, `Streams` and `Watching` know nothing about Spring, HTTP or the database: the controllers translate requests into calls on them, and their `*Config` class creates one of each, with the system clock (UTC). Tests create them with a clock of their own and move time instead of waiting ([Testing](testing.md)).
+**The rules are plain Java.** `RoomSeats`, `Streams` and `Watching` know nothing about Spring, HTTP or the database: the controllers translate requests into calls on them, and their `*Config` class creates one of each, `RoomSeats` and `Streams` with the system clock (UTC). Tests create them with a clock of their own and move time instead of waiting ([Testing](testing.md)).
 
 ## A request's path
 
@@ -61,11 +62,12 @@ sequenceDiagram
   participant D as PostgreSQL
   B->>F: POST /api/streams (session cookie, CSRF header)
   F->>D: load the session
-  F->>F: signed in? CSRF token matches?
+  F->>F: CSRF token matches? signed in?
   F->>C: the request, with the Google account
   C->>U: member(account)
   U->>D: find the user
-  U-->>C: the User (or 401 / 403)
+  U-->>C: the User (or 403)
+  C->>C: a valid body? (or 400)
   C->>R: seated?
   R-->>C: yes (or 409)
   C->>S: start(screen, connection, track, settings)
@@ -73,12 +75,12 @@ sequenceDiagram
   C-->>B: 200 and the streams
 ```
 
-1. **The filters** load the session from PostgreSQL, refuse anyone not signed in (401) and any state-changing request without the CSRF token (403). `/api/admin/**` also needs the admin role. Details in [Security](security.md).
-2. **The controller** turns the signed-in Google account into the user (`CurrentUser.member`: 403 for someone who isn't a member) and checks the rule that spans modules (here: only someone with a seat may share).
+1. **The filters** load the session from PostgreSQL, then refuse a state-changing request without the CSRF token (403), and then anyone not signed in (401). The CSRF check comes first, so a signed-out request without the token gets 403. `/api/admin/**` also needs the admin role. Details in [Security](security.md).
+2. **The controller** turns the signed-in Google account into the user (`CurrentUser.member`: 403 for someone who isn't a member), checks the body (400 for an unknown kind or settings that don't fit it), and checks the rule that spans modules (here: only someone with a seat may share, 409).
 3. **The logic** (`Streams`) applies the domain's rules and answers, or throws an exception the controller turns into a status.
 4. **Errors** come back as [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem details; their `detail` is the message the web app shows.
 
-Only signing in, the user and access requests touch the database during a request; the room's state never does.
+Only the session, the user and access requests touch the database during a request; the room's state never does.
 
 ## The room: seats, the queue and streams
 
