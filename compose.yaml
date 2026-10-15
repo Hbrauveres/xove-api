@@ -1,6 +1,7 @@
 # The API on its own: what the server deploys as the app xove-api (spec 0063).
 # Locally and in the checks, compose.local.yaml adds a throwaway database.
-# Settings come from outside this repo, set per environment, only the ones this app needs (ADR-0062).
+# Settings come from outside this repo, set per environment, only the ones
+# this app needs (ADR-0062).
 
 services:
   api:

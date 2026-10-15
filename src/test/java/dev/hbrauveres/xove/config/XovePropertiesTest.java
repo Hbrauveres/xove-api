@@ -23,7 +23,7 @@ class XovePropertiesTest {
 
     @Test
     void theSettingSetsTheSeats() {
-        assertThat(bind(Map.of("xove.room.seats", "3")).room().seats()).isEqualTo(3);
+        assertThat(bind(Map.of("xove.room.seats", "4")).room().seats()).isEqualTo(4);
         assertThat(bind(Map.of("xove.room.seats", "1")).room().seats()).isEqualTo(1);
         assertThat(bind(Map.of("xove.room.seats", "20")).room().seats()).isEqualTo(20);
     }
