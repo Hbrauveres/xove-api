@@ -21,7 +21,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.WebApplicationContext;
 
-/** The room's size comes from XOVE_ROOM_SEATS: staging uses 3 to try the queue (spec 0060). */
+/** The room's size comes from XOVE_ROOM_SEATS: a test environment can use fewer to try the queue (spec 0060). */
 @SpringBootTest
 @Import(TestcontainersConfiguration.class)
 @TestPropertySource(properties = "XOVE_ROOM_SEATS=2")
