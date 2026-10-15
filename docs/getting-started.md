@@ -41,7 +41,7 @@ An older `xove-dev-db` made with another password won't accept the new one: remo
 
 Flyway creates the tables on the first start. Your email in `ADMIN_EMAILS` makes you an admin and a member. The Google client must allow `http://localhost:5173`, the web app's address, where sign-in comes back.
 
-With the web app running too (see `xove`'s Getting started), open http://localhost:5173, sign in with Google, and you land in the room.
+With the web app running too (see [`xove-web`'s Getting started](https://github.com/Hbrauveres/xove-web/blob/main/docs/getting-started.md)), open http://localhost:5173, sign in with Google, and you land in the room.
 
 **3. Video (optional).** Sharing needs a LiveKit server. Run one in development mode with your dev key pair:
 
@@ -72,14 +72,14 @@ Its database is named `xove-${APP_ENV}-db`, like the one `docker run` started un
 | --- | --- | --- |
 | `APP_ENV` | Compose | `stage`, `prod`, or anything locally; goes into container names |
 | `IMAGE_TAG` | Compose | Which published image version to run; set by the deploy script, per app. Unset means "build locally" |
-| `POSTGRES_HOST` | Compose | Where the database is, for the API's `SPRING_DATASOURCE_URL`: on servers its container (`xove-<env>-db`), with `compose.local.yaml` `db`. Run directly, the API reads `SPRING_DATASOURCE_URL` itself |
+| `POSTGRES_HOST` | Compose | Where the database is, for the API's `SPRING_DATASOURCE_URL`: on servers the database's host on its private network, with `compose.local.yaml` `db`. Run directly, the API reads `SPRING_DATASOURCE_URL` itself |
 | `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` | db, api | Database name and credentials |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | api | Google OAuth client |
 | `ADMIN_EMAILS` | api | Comma-separated admin emails |
 | `LIVEKIT_URL` | api | Address browsers use to reach LiveKit (`wss://…` on servers) |
 | `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | api | The pair shared with that environment's LiveKit: the API signs tokens with it, LiveKit checks them and signs its webhooks. Secret ≥ 32 characters |
-| `LIVEKIT_ROOM` | api | This environment's room (staging `xove-stage`, production `xove`); defaults to `xove` |
-| `XOVE_ROOM_SEATS` | api | People in the room at once, sharers included: 1 to 20 (production 20, staging 3); defaults to 20. Anything else stops the API at start-up |
+| `LIVEKIT_ROOM` | api | This environment's room, a different one per environment; defaults to `xove` |
+| `XOVE_ROOM_SEATS` | api | People in the room at once, sharers included: 1 to 20 (fewer on a test environment, to try the queue); defaults to 20. Anything else stops the API at start-up |
 
 Their values live outside this repo, one set per environment. There's no `.env` here: each server builds its own.
 
