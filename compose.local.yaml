@@ -1,6 +1,6 @@
 # The API with a throwaway database, locally and in the checks' "Validate build":
 # compose.yaml plus this file. The servers never read it; their database runs
-# from the private xove-ops repo (spec 0062).
+# outside these files (spec 0062).
 #
 #   docker network create web                       # once
 #   docker network create "xove-${APP_ENV}-db"       # once per APP_ENV

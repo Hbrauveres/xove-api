@@ -42,12 +42,12 @@ management:
 xove:
   admin-emails: ${ADMIN_EMAILS:}
   room:
-    # People in the room at once, sharers included: 1 to 20 (spec 0060). Staging uses fewer.
+    # People in the room at once, sharers included: 1 to 20 (spec 0060). A test environment can use fewer.
     seats: ${XOVE_ROOM_SEATS:20}
   livekit:
     url: ${LIVEKIT_URL:}
     api-key: ${LIVEKIT_API_KEY:}
     api-secret: ${LIVEKIT_API_SECRET:}
-    # Each environment has its own room (staging xove-stage, production xove); spec 0044.
+    # Each environment has its own room; spec 0044.
     room: ${LIVEKIT_ROOM:xove}
     token-ttl: 1h
