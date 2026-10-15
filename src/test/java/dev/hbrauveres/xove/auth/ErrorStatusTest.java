@@ -26,8 +26,12 @@ class ErrorStatusTest {
 
     @Test
     void aSignedOutChangeWithoutTheCsrfTokenGets403() throws Exception {
-        assertThat(send("POST", "/api/streams").statusCode()).isEqualTo(403);
+        var streams = send("POST", "/api/streams");
+        assertThat(streams.statusCode()).isEqualTo(403);
         assertThat(send("POST", "/api/auth/logout").statusCode()).isEqualTo(403);
+
+        // The error page says what happened, never how: no stack trace or exception
+        assertThat(streams.body()).doesNotContain("trace").doesNotContain("exception");
     }
 
     @Test

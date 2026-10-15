@@ -63,7 +63,7 @@ void removingAMemberRevokesAccessAndSignsThemOut() throws Exception {
 
 `asAdmin()` is `oidcLogin()` as the admin's Google id with the `ADMIN` role; the test class lists the admin's email in `xove.admin-emails` (`@TestPropertySource`) and signs the admin in once before each test. Also: `StreamsControllerTest`, `RoomControllerTest`, `LiveKitControllerTest`, `LiveKitWebhookControllerTest` (events signed with a test key by `WebhookSigner`), `AuthTest`.
 
-MockMvc never forwards a refused request to the error page, as a running server does. The few tests that depend on that start the app on a random port and send plain HTTP: `HealthEndpointTest`, and `ErrorStatusTest` (a signed-out change without the CSRF token gets 403, not a 401 for the error page).
+Tests that need a real server start the app on a random port and send plain HTTP: `HealthEndpointTest`, and `ErrorStatusTest`, since MockMvc never forwards a refused request to the error page as a running server does (a signed-out change without the CSRF token gets 403, not a 401 for the error page).
 
 ### Persistence tests
 
