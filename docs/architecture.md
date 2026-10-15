@@ -75,7 +75,7 @@ sequenceDiagram
   C-->>B: 200 and the streams
 ```
 
-1. **The filters** load the session from PostgreSQL, then refuse a state-changing request without the CSRF token (403), and then anyone not signed in (401). The CSRF check comes first, so a signed-out request without the token gets 403. `/api/admin/**` also needs the admin role. Details in [Security](security.md).
+1. **The filters** load the session from PostgreSQL, then refuse a state-changing request without the CSRF token (403), and then anyone not signed in (401). The CSRF check comes first, so a signed-out request without the token gets 403 (`ErrorStatusTest`). `/api/admin/**` also needs the admin role. Details in [Security](security.md).
 2. **The controller** turns the signed-in Google account into the user (`CurrentUser.member`: 403 for someone who isn't a member), checks the body (400 for an unknown kind or settings that don't fit it), and checks the rule that spans modules (here: only someone with a seat may share, 409).
 3. **The logic** (`Streams`) applies the domain's rules and answers, or throws an exception the controller turns into a status.
 4. **Errors** come back as [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) problem details; their `detail` is the message the web app shows.

@@ -41,7 +41,7 @@ A forged request from another site would carry the session cookie, so every requ
 
 - the API sets a readable `XSRF-TOKEN` cookie (on `GET /api/me`, among others); `CsrfCookieTest.meSetsTheXsrfCookieForTheFrontend`;
 - the web app copies it into an `X-XSRF-TOKEN` header on every `POST`, `PUT` and `DELETE`; another site can't read the cookie, so it can't send the header;
-- without it the API answers 403. `AccessFlowTest.requestingAccessNeedsCsrfToken`, `LiveKitControllerTest.withoutTheCsrfTokenItIsRejected`.
+- without it the API answers 403, signed in or not. `AccessFlowTest.requestingAccessNeedsCsrfToken`, `LiveKitControllerTest.withoutTheCsrfTokenItIsRejected`; signed out, on a running server, `ErrorStatusTest.aSignedOutChangeWithoutTheCsrfTokenGets403`. A refused request is forwarded to Spring's error page, which is open to everyone (`SecurityConfig`), so the caller gets that 403 rather than a 401 for the error page itself.
 
 This is Spring Security's setup for single-page apps (`csrf.spa()`). The one exception is LiveKit's webhook, which has no session and proves itself with its signature ([below](#livekit-webhooks)).
 

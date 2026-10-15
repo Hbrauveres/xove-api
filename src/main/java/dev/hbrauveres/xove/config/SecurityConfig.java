@@ -2,6 +2,7 @@ package dev.hbrauveres.xove.config;
 
 import dev.hbrauveres.xove.auth.AdminAuthoritiesMapper;
 import dev.hbrauveres.xove.auth.LoginSuccessHandler;
+import jakarta.servlet.DispatcherType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Bean;
@@ -23,6 +24,9 @@ public class SecurityConfig {
             throws Exception {
         http
             .authorizeHttpRequests(auth -> auth
+                // A refused request is forwarded to the error page: let that forward through,
+                // so a signed-out caller gets the real status (a 403), not a 401 for the error page
+                .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                 .requestMatchers("/api/health", "/api/health/**").permitAll()
                 .requestMatchers("/api/oauth2/**", "/api/login/**").permitAll()
                 // LiveKit has no login; the webhook checks LiveKit's signature itself
