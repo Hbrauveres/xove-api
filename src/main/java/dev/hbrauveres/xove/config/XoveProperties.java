@@ -26,7 +26,7 @@ public record XoveProperties(List<String> adminEmails, Room room) {
      * The room (spec 0060).
      *
      * @param seats people in the room at once, sharers included: 1 to 20, 20 when not set
-     *              ({@code XOVE_ROOM_SEATS}); staging uses fewer to try the queue
+     *              ({@code XOVE_ROOM_SEATS}); a test environment can use fewer to try the queue
      */
     public record Room(Integer seats) {
 
