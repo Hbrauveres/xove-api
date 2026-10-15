@@ -12,21 +12,86 @@ Every change is tested automatically in the [checks](../.github/workflows/ci.yml
 
 ## API tests
 
-Three kinds, from fastest to slowest:
+Three kinds, from fastest to slowest. Each one tests what it must at the lowest cost.
 
-- **Plain unit tests**, no Spring and no database. Example: `RoomSeatsTest` checks the seats and the queue (30 and 60 seconds kept, the seat offer, no answer to the end of the line) with a clock the test moves (`MutableClock`), so nothing sleeps. `StreamsTest` checks the 6 places. `LiveKitTokensTest` checks a token's signature, claims and expiry.
-- **Web layer tests** with MockMvc and `spring-security-test`. They send real HTTP requests through the whole Spring Security filter chain as a signed-in user (`oidcLogin()`), with or without a CSRF token (`csrf()`), and check status codes and JSON. Example: `StreamsControllerTest`, `RoomControllerTest`, `AccessFlowTest`.
-- **Persistence tests** against a real PostgreSQL started by Testcontainers. They check what only a real database can: unique emails, "one pending request per user", migrations applying cleanly.
+### Plain unit tests
+
+No Spring, no database: a class and its rules. Used for the room's logic (`RoomSeats`, `Streams`, `Watching`) and LiveKit's tokens and signatures (`LiveKitTokens`, `LiveKitWebhookVerifier`). They run in milliseconds.
+
+Time is a constructor argument of `RoomSeats` and `Streams`: the tests pass a `MutableClock` and move it, so a 30-second rule is tested without waiting 30 seconds. From `RoomSeatsTest` (two seats; Ana and Bruno are in, Caio waits):
+
+```java
+@Test
+void closingTheTabKeepsTheSeatFor30Seconds() {
+    fillTheRoom();
+    seats.enter(CAIO);
+
+    seats.left(ANA, "PA_ana", true);
+    wait(29);
+    seats.enter(CAIO);
+    assertThat(seats.isSeated(ANA)).isTrue();
+    assertThat(seats.enter(CAIO)).isEqualTo(SeatStatus.waiting(1));
+
+    wait(1);
+    assertThat(seats.isSeated(ANA)).isFalse();
+}
+```
+
+`wait(29)` is `clock.advance(Duration.ofSeconds(29))`. Also: `StreamsTest` (the 6 places), `LiveKitTokensTest` (a token's signature, grants and expiry), `LiveKitWebhookVerifierTest` (every way a signature is refused).
+
+### Web layer tests
+
+Real HTTP requests through the whole app with MockMvc: the Spring Security filters, the controller, the logic and the database, without a server or a browser. Used for every endpoint: who may call it, what it answers, and what it changes. `spring-security-test` signs the request in as a Google user (`oidcLogin()`) and adds the CSRF token (`csrf()`), or leaves it out to prove it's needed.
+
+From `AccessFlowTest`:
+
+```java
+@Test
+void removingAMemberRevokesAccessAndSignsThemOut() throws Exception {
+    friend.changeStatus(UserStatus.MEMBER);
+    users.saveAndFlush(friend);
+    saveSessionFor("sub-friend");
+    assertThat(sessions.findByPrincipalName("sub-friend")).hasSize(1);
+
+    mvc.perform(delete("/api/admin/members/" + friend.getId()).with(asAdmin()).with(csrf()))
+            .andExpect(status().isNoContent());
+
+    assertThat(statusOf(friend)).isEqualTo(UserStatus.NONE);
+    assertThat(sessions.findByPrincipalName("sub-friend")).isEmpty();
+}
+```
+
+`asAdmin()` is `oidcLogin()` as the admin's Google id with the `ADMIN` role; the test class lists the admin's email in `xove.admin-emails` (`@TestPropertySource`) and signs the admin in once before each test. Also: `StreamsControllerTest`, `RoomControllerTest`, `LiveKitControllerTest`, `LiveKitWebhookControllerTest` (events signed with a test key by `WebhookSigner`), `AuthTest`.
+
+### Persistence tests
+
+Against a real PostgreSQL 17, started in Docker by [Testcontainers](https://testcontainers.com) (`TestcontainersConfiguration`, `@ServiceConnection` points Spring at it). Used for what only the database can prove: its constraints and the migrations. An in-memory database would accept SQL PostgreSQL refuses, and the other way round.
+
+From `PersistenceTest`:
+
+```java
+@Test
+void allowsOnlyOnePendingRequestPerUser() {
+    User user = users.saveAndFlush(new User("b@gmail.com", "B", null));
+    requests.saveAndFlush(new AccessRequest(user, "let me in"));
+    assertThatThrownBy(() -> requests.saveAndFlush(new AccessRequest(user, "again")))
+            .isInstanceOf(DataIntegrityViolationException.class);
+}
+```
+
+The partial unique index from `V1` refuses the second pending request ([Data model](data-model.md#what-the-database-guarantees-itself)). Every test that starts the app with its database applies these migrations first, so a migration that doesn't apply fails them all.
+
+### Running them
 
 Docker must be running for Testcontainers. The first run downloads the `postgres:17-alpine` image.
 
 ```bash
 ./mvnw test                          # everything
-./mvnw test -Dtest='Screen*'         # one area
+./mvnw test -Dtest='Room*'           # one area
 ./mvnw test -Dtest=AccessFlowTest    # one class
 ```
 
-Most Spring tests are `@Transactional`, so each one rolls back its data and they can run in any order. A test that changes Spring's configuration (like `CsrfCookieTest`) gets its own application context with `@DirtiesContext`.
+Most Spring tests are `@Transactional`, so each one rolls back its data and they can run in any order. Test classes with different settings (`@TestPropertySource`) get their own application context automatically. `CsrfCookieTest` asks for a fresh one (`@DirtiesContext`), because the other classes' `csrf()` helper replaces the CSRF token store with one that never writes cookies, and this test checks the cookie.
 
 ## What a good test here looks like
 

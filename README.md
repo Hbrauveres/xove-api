@@ -1,6 +1,6 @@
 # Xovê API
 
-The API of [Xovê](https://xove.app): a private room where invited friends share their screens and cameras and watch each other live, up to 6 streams at once, 20 people in the room, with a queue when it's full. This repo is the server side; the web app is in [`xove`](https://github.com/Hbrauveres/xove).
+The API of [Xovê](https://xove.app): a private room where invited friends share their screens and cameras and watch each other live, up to 6 streams at once, 20 people in the room, with a queue when it's full. This repo is the server side; the web app is in [`xove-web`](https://github.com/Hbrauveres/xove-web).
 
 ## What it does
 
@@ -27,9 +27,19 @@ flowchart LR
   B -.->|video over WebRTC| L
 ```
 
-More in [docs/architecture.md](docs/architecture.md), and every endpoint in [docs/api.md](docs/api.md).
+## Design choices
 
-This repo was split out of `xove` with its history: a commit's `(Hbrauveres/xove#n)` is that repo's pull request.
+| Choice | Why |
+| --- | --- |
+| **Sessions in PostgreSQL** (Spring Session JDBC), not tokens in the browser | Removing a member deletes their sessions, so they're signed out everywhere at once; a deploy signs nobody out |
+| **The room's state in memory**, in plain Java classes with an injected clock | Seats, the queue and streams change every second and only matter while people are connected; one instance serves a handful of people. Plain Java keeps the rules apart from Spring, and the clock lets the tests move time instead of sleeping |
+| **LiveKit carries the video;** the API only signs tokens and reads webhooks | Media never touches the API. A token says exactly what a browser may do in which room, and LiveKit's signed webhooks tell the API when someone leaves or stops sharing |
+| **Tests against a real PostgreSQL** (Testcontainers) | Constraints like "one pending request per user" and the migrations themselves are proven on the same PostgreSQL version that runs in production |
+| **Errors as RFC 9457 problem details** | One error shape for every endpoint; its `detail` is the message the web app shows |
+
+More in the docs: [Architecture](docs/architecture.md) (modules, a request's path, memory and the database), [Data model](docs/data-model.md), [Security](docs/security.md), [API](docs/api.md) (every endpoint), [Testing](docs/testing.md).
+
+This repo was split out of the original `xove` repo with its history: a commit's `(Hbrauveres/xove#n)` is that repo's pull request.
 
 ## Run it and test it
 

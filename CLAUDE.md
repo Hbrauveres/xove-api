@@ -2,7 +2,7 @@
 
 This repo is worked on from the private `xove-workspace` repo, where it's the submodule `repos/xove-api`. The workspace's `CLAUDE.md` holds every rule (workflow, git, secrets, tests); its `specs/`, decisions and the cross-repo contracts are there. Read those first.
 
-This repo's own `docs/` (architecture, API, getting started, testing) and `README.md` describe the code: update them in the same PR as the code they describe. They're public: nothing about servers, secrets or the process.
+This repo's own `docs/` (architecture, data model, security, API, getting started, testing) and `README.md` describe the code: update them in the same PR as the code they describe. They're public: nothing about servers, secrets or the process.
 
 Specific to this repo:
 
