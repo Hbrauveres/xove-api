@@ -1,5 +1,6 @@
 package dev.hbrauveres.xove.stream;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.Set;
 
 /**
@@ -10,7 +11,10 @@ import java.util.Set;
  * @param quality "1080p", "720p" or "480p"; a camera goes up to 720p (spec 0060)
  * @param mode    "smooth" (motion first) or "sharp" (detail first)
  */
-public record StreamSettings(String quality, String mode) {
+public record StreamSettings(
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED, allowableValues = {"1080p", "720p", "480p"},
+                description = "A camera goes up to 720p") String quality,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED, allowableValues = {"smooth", "sharp"}) String mode) {
 
     private static final Set<String> SCREEN_QUALITIES = Set.of("1080p", "720p", "480p");
     private static final Set<String> CAMERA_QUALITIES = Set.of("720p", "480p");

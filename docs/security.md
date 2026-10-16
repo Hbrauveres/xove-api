@@ -86,6 +86,7 @@ To join the video room, a browser needs a token the API signs (`LiveKitTokens`),
 
 - **The database** has no public port: only the API reaches it, on a private network.
 - **The API publishes no port** either: only the reverse proxy (HTTPS) and LiveKit's media ports face the internet.
+- **The API's description and its page** (OpenAPI, Swagger UI) are served only when `XOVE_API_DOCS=true`, which only a developer's machine sets: on the servers both addresses answer 404 (`ApiDocsOffTest`). The description is a file in this repo ([API](api.md#reading-the-description)), as public as the code it comes from.
 - **Settings and secrets** come from environment variables, set per environment outside this repo; none are in the code or the image.
 - **Every change** passes a vulnerability scan of the image and dependencies (Trivy) and a static analysis of the code (Semgrep) before it can be merged ([`ci.yml`](../.github/workflows/ci.yml)).
 

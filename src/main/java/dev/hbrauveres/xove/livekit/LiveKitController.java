@@ -3,6 +3,8 @@ package dev.hbrauveres.xove.livekit;
 import dev.hbrauveres.xove.auth.CurrentUser;
 import dev.hbrauveres.xove.room.RoomSeats;
 import dev.hbrauveres.xove.user.User;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
@@ -27,6 +29,10 @@ public class LiveKitController {
         this.seats = seats;
     }
 
+    @Operation(summary = "A token to join the video room", description = "Members with a seat.")
+    @ApiResponse(responseCode = "200", description = "OK")
+    @ApiResponse(responseCode = "409", description = "No seat: wait for your turn")
+    @ApiResponse(responseCode = "503", description = "Video isn't set up on this server")
     @PostMapping("/api/livekit/token")
     public LiveKitAccess token(@AuthenticationPrincipal OidcUser google) {
         User me = currentUser.member(google);

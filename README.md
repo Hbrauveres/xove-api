@@ -36,8 +36,9 @@ flowchart LR
 | **LiveKit carries the video;** the API only signs tokens and reads webhooks | Media never touches the API. A token says exactly what a browser may do in which room, and LiveKit's signed webhooks tell the API when someone leaves or stops sharing |
 | **Tests against a real PostgreSQL** (Testcontainers) | Constraints like "one pending request per user" and the migrations themselves are proven on the same PostgreSQL version that runs in production |
 | **Errors as RFC 9457 problem details** | One error shape for every endpoint; its `detail` is the message the web app shows |
+| **An OpenAPI description generated from the code**, committed and checked | It can't drift: a test fails when it differs from the controllers, and each pull request shows how the API changes. It's served on no server |
 
-More in the docs: [Architecture](docs/architecture.md) (modules, a request's path, memory and the database), [Data model](docs/data-model.md), [Security](docs/security.md), [API](docs/api.md) (every endpoint), [Testing](docs/testing.md).
+More in the docs: [Architecture](docs/architecture.md) (modules, a request's path, memory and the database), [Data model](docs/data-model.md), [Security](docs/security.md), [API](docs/api.md) (how to call it, and its OpenAPI description, [`openapi.json`](docs/openapi.json)), [Testing](docs/testing.md).
 
 This repo was split out of the original `xove` repo with its history: a commit's `(Hbrauveres/xove#n)` is that repo's pull request.
 

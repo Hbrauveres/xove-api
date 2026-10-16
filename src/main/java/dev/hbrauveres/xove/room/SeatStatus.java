@@ -1,6 +1,7 @@
 package dev.hbrauveres.xove.room;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Duration;
 import java.time.Instant;
 
@@ -12,7 +13,11 @@ import java.time.Instant;
  *   confirm or cancel. The countdown uses the seconds, so a browser's wrong clock doesn't matter.
  */
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public record SeatStatus(String status, Integer place, Instant until, Long seconds) {
+public record SeatStatus(
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED, allowableValues = {"in", "waiting", "offered"}) String status,
+        @Schema(description = "While waiting: my place, 1 is next") Integer place,
+        @Schema(description = "While offered: when the offer runs out") Instant until,
+        @Schema(description = "While offered: the seconds left") Long seconds) {
 
     public static SeatStatus in() {
         return new SeatStatus("in", null, null, null);
