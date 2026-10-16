@@ -1,8 +1,15 @@
 package dev.hbrauveres.xove.stream;
 
+import static dev.hbrauveres.xove.config.OpenApiConfig.PROBLEM_JSON;
+import static dev.hbrauveres.xove.config.OpenApiConfig.PROBLEM_REF;
+
 import dev.hbrauveres.xove.auth.CurrentUser;
 import dev.hbrauveres.xove.room.RoomSeats;
 import dev.hbrauveres.xove.user.User;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -38,6 +45,7 @@ public class StreamsController {
         this.currentUser = currentUser;
     }
 
+    @Operation(summary = "The live streams, the seats, who watches what and who's here", description = "Members. Polled every 2 seconds by every open room.")
     @GetMapping
     public StreamsView current(@AuthenticationPrincipal OidcUser google) {
         User me = currentUser.member(google);
@@ -48,6 +56,10 @@ public class StreamsController {
      * The body says what the stream shows, which LiveKit connection and track it comes
      * from (both required), and optionally its quality and mode.
      */
+    @Operation(summary = "Start my screen or camera", description = "Members with a seat.")
+    @ApiResponse(responseCode = "200", description = "OK")
+    @ApiResponse(responseCode = "400", description = "Missing connection or track, or settings that don't fit the kind", content = @Content(mediaType = PROBLEM_JSON, schema = @Schema(ref = PROBLEM_REF)))
+    @ApiResponse(responseCode = "409", description = "The 6 places are taken (reason: full), or no seat", content = @Content(mediaType = PROBLEM_JSON, schema = @Schema(ref = PROBLEM_REF)))
     @PostMapping
     public StreamsView start(@AuthenticationPrincipal OidcUser google,
                              @RequestBody(required = false) StartRequest request) {
@@ -70,6 +82,10 @@ public class StreamsController {
     }
 
     /** Its person changes what a stream is sent with; everyone sees it on their next poll. */
+    @Operation(summary = "Change my stream's quality and mode", description = "Its person.")
+    @ApiResponse(responseCode = "200", description = "OK")
+    @ApiResponse(responseCode = "400", description = "An unknown kind, quality or mode", content = @Content(mediaType = PROBLEM_JSON, schema = @Schema(ref = PROBLEM_REF)))
+    @ApiResponse(responseCode = "409", description = "You don't have that stream", content = @Content(mediaType = PROBLEM_JSON, schema = @Schema(ref = PROBLEM_REF)))
     @PostMapping("/{kind}/settings")
     public StreamsView settings(@AuthenticationPrincipal OidcUser google, @PathVariable String kind,
                                 @RequestBody(required = false) StreamSettings settings) {
@@ -82,6 +98,9 @@ public class StreamsController {
         return view(me);
     }
 
+    @Operation(summary = "End my stream of that kind; nothing to stop is fine", description = "Members.")
+    @ApiResponse(responseCode = "200", description = "OK")
+    @ApiResponse(responseCode = "400", description = "An unknown kind", content = @Content(mediaType = PROBLEM_JSON, schema = @Schema(ref = PROBLEM_REF)))
     @PostMapping("/{kind}/stop")
     public StreamsView stop(@AuthenticationPrincipal OidcUser google, @PathVariable String kind) {
         User me = currentUser.member(google);
@@ -93,6 +112,8 @@ public class StreamsController {
      * What's on my stage (spec 0104): a person's screen or camera, or nothing ({@code {}}) for
      * an empty stage. Everyone sees it in the streams; only a seated person's is listed.
      */
+    @Operation(summary = "What's on my stage, or {} for an empty stage", description = "Members.")
+    @ApiResponse(responseCode = "400", description = "A wrong kind, or no sharer", content = @Content(mediaType = PROBLEM_JSON, schema = @Schema(ref = PROBLEM_REF)))
     @PutMapping("/watching")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void watching(@AuthenticationPrincipal OidcUser google, @RequestBody WatchRequest request) {

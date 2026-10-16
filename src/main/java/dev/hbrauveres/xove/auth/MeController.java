@@ -2,6 +2,7 @@ package dev.hbrauveres.xove.auth;
 
 import dev.hbrauveres.xove.user.User;
 import dev.hbrauveres.xove.user.UserService;
+import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.web.csrf.CsrfToken;
@@ -20,6 +21,7 @@ public class MeController {
     }
 
     /** Who is signed in. Signed-out requests never get here: security answers 401. */
+    @Operation(summary = "Who is signed in; also sets the XSRF-TOKEN cookie", description = "Signed in.")
     @GetMapping("/api/me")
     public MeResponse me(@AuthenticationPrincipal OidcUser google, CsrfToken csrf) {
         csrf.getToken(); // makes Spring send the XSRF-TOKEN cookie the frontend needs for POSTs

@@ -11,6 +11,7 @@
   "paths" : {
     "/api/access-requests" : {
       "post" : {
+        "description" : "Signed in, not a member yet.",
         "operationId" : "requestAccess",
         "requestBody" : {
           "content" : {
@@ -24,6 +25,16 @@
         "responses" : {
           "201" : {
             "description" : "Created"
+          },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "A message over 500 characters"
           },
           "401" : {
             "content" : {
@@ -44,16 +55,28 @@
               }
             },
             "description" : "Without the CSRF token, or not allowed"
+          },
+          "409" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Already a member, or a request is already waiting"
           }
         },
         "security" : [ {
           "session" : [ ]
         } ],
+        "summary" : "Ask for access, with an optional message",
         "tags" : [ "access-request-controller" ]
       }
     },
     "/api/admin/access-requests" : {
       "get" : {
+        "description" : "Admins.",
         "operationId" : "pendingRequests",
         "responses" : {
           "200" : {
@@ -93,11 +116,13 @@
         "security" : [ {
           "session" : [ ]
         } ],
+        "summary" : "The requests waiting for a decision",
         "tags" : [ "admin-controller" ]
       }
     },
     "/api/admin/access-requests/{id}/approve" : {
       "post" : {
+        "description" : "Admins.",
         "operationId" : "approve",
         "parameters" : [ {
           "in" : "path",
@@ -131,16 +156,38 @@
               }
             },
             "description" : "Without the CSRF token, or not allowed"
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "No such request"
+          },
+          "409" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "The request was already decided"
           }
         },
         "security" : [ {
           "session" : [ ]
         } ],
+        "summary" : "Approve a request: the person becomes a member",
         "tags" : [ "admin-controller" ]
       }
     },
     "/api/admin/access-requests/{id}/decline" : {
       "post" : {
+        "description" : "Admins.",
         "operationId" : "decline",
         "parameters" : [ {
           "in" : "path",
@@ -174,16 +221,38 @@
               }
             },
             "description" : "Without the CSRF token, or not allowed"
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "No such request"
+          },
+          "409" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "The request was already decided"
           }
         },
         "security" : [ {
           "session" : [ ]
         } ],
+        "summary" : "Decline a request: the person may ask again",
         "tags" : [ "admin-controller" ]
       }
     },
     "/api/admin/members" : {
       "get" : {
+        "description" : "Admins.",
         "operationId" : "members",
         "responses" : {
           "200" : {
@@ -223,11 +292,13 @@
         "security" : [ {
           "session" : [ ]
         } ],
+        "summary" : "The members",
         "tags" : [ "admin-controller" ]
       }
     },
     "/api/admin/members/{id}" : {
       "delete" : {
+        "description" : "Admins.",
         "operationId" : "removeMember",
         "parameters" : [ {
           "in" : "path",
@@ -261,16 +332,38 @@
               }
             },
             "description" : "Without the CSRF token, or not allowed"
+          },
+          "404" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "No such user"
+          },
+          "409" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "An admin can't be removed here"
           }
         },
         "security" : [ {
           "session" : [ ]
         } ],
+        "summary" : "Remove a member and end all their sessions",
         "tags" : [ "admin-controller" ]
       }
     },
     "/api/livekit/token" : {
       "post" : {
+        "description" : "Members with a seat.",
         "operationId" : "token",
         "responses" : {
           "200" : {
@@ -302,16 +395,38 @@
               }
             },
             "description" : "Without the CSRF token, or not allowed"
+          },
+          "409" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "No seat: wait for your turn"
+          },
+          "503" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Video isn't set up on this server"
           }
         },
         "security" : [ {
           "session" : [ ]
         } ],
+        "summary" : "A token to join the video room",
         "tags" : [ "live-kit-controller" ]
       }
     },
     "/api/livekit/webhook" : {
       "post" : {
+        "description" : "LiveKit only: no session; the Authorization header carries LiveKit's signature of the body.",
         "operationId" : "receive",
         "parameters" : [ {
           "in" : "header",
@@ -335,13 +450,25 @@
         "responses" : {
           "200" : {
             "description" : "OK"
+          },
+          "401" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "A missing or wrong signature"
           }
         },
+        "summary" : "LiveKit's room events: seats confirmed, streams ended",
         "tags" : [ "live-kit-webhook-controller" ]
       }
     },
     "/api/me" : {
       "get" : {
+        "description" : "Signed in.",
         "operationId" : "me",
         "parameters" : [ {
           "in" : "query",
@@ -386,11 +513,13 @@
         "security" : [ {
           "session" : [ ]
         } ],
+        "summary" : "Who is signed in; also sets the XSRF-TOKEN cookie",
         "tags" : [ "me-controller" ]
       }
     },
     "/api/room/accept" : {
       "post" : {
+        "description" : "Members.",
         "operationId" : "accept",
         "responses" : {
           "200" : {
@@ -422,16 +551,28 @@
               }
             },
             "description" : "Without the CSRF token, or not allowed"
+          },
+          "409" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "No offer: it ran out"
           }
         },
         "security" : [ {
           "session" : [ ]
         } ],
+        "summary" : "Take the seat offered",
         "tags" : [ "room-controller" ]
       }
     },
     "/api/room/cancel" : {
       "post" : {
+        "description" : "Members.",
         "operationId" : "cancel",
         "responses" : {
           "204" : {
@@ -461,11 +602,13 @@
         "security" : [ {
           "session" : [ ]
         } ],
+        "summary" : "Leave the queue, or turn the offer down",
         "tags" : [ "room-controller" ]
       }
     },
     "/api/room/enter" : {
       "post" : {
+        "description" : "Members. Polled every 2 seconds while waiting.",
         "operationId" : "enter",
         "requestBody" : {
           "content" : {
@@ -511,11 +654,13 @@
         "security" : [ {
           "session" : [ ]
         } ],
+        "summary" : "Ask for a seat, or poll my place in the queue",
         "tags" : [ "room-controller" ]
       }
     },
     "/api/room/leave" : {
       "post" : {
+        "description" : "Members.",
         "operationId" : "leave",
         "responses" : {
           "204" : {
@@ -545,11 +690,13 @@
         "security" : [ {
           "session" : [ ]
         } ],
+        "summary" : "The waiting page is closing: keep my place 30 seconds",
         "tags" : [ "room-controller" ]
       }
     },
     "/api/streams" : {
       "get" : {
+        "description" : "Members. Polled every 2 seconds by every open room.",
         "operationId" : "current",
         "responses" : {
           "200" : {
@@ -586,9 +733,11 @@
         "security" : [ {
           "session" : [ ]
         } ],
+        "summary" : "The live streams, the seats, who watches what and who's here",
         "tags" : [ "streams-controller" ]
       },
       "post" : {
+        "description" : "Members with a seat.",
         "operationId" : "start",
         "requestBody" : {
           "content" : {
@@ -610,6 +759,16 @@
             },
             "description" : "OK"
           },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "Missing connection or track, or settings that don't fit the kind"
+          },
           "401" : {
             "content" : {
               "application/problem+json" : {
@@ -629,16 +788,28 @@
               }
             },
             "description" : "Without the CSRF token, or not allowed"
+          },
+          "409" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "The 6 places are taken (reason: full), or no seat"
           }
         },
         "security" : [ {
           "session" : [ ]
         } ],
+        "summary" : "Start my screen or camera",
         "tags" : [ "streams-controller" ]
       }
     },
     "/api/streams/watching" : {
       "put" : {
+        "description" : "Members.",
         "operationId" : "watching",
         "requestBody" : {
           "content" : {
@@ -654,6 +825,16 @@
           "204" : {
             "description" : "No Content"
           },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "A wrong kind, or no sharer"
+          },
           "401" : {
             "content" : {
               "application/problem+json" : {
@@ -678,11 +859,13 @@
         "security" : [ {
           "session" : [ ]
         } ],
+        "summary" : "What's on my stage, or {} for an empty stage",
         "tags" : [ "streams-controller" ]
       }
     },
     "/api/streams/{kind}/settings" : {
       "post" : {
+        "description" : "Its person.",
         "operationId" : "settings",
         "parameters" : [ {
           "in" : "path",
@@ -712,6 +895,16 @@
             },
             "description" : "OK"
           },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "An unknown kind, quality or mode"
+          },
           "401" : {
             "content" : {
               "application/problem+json" : {
@@ -731,16 +924,28 @@
               }
             },
             "description" : "Without the CSRF token, or not allowed"
+          },
+          "409" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "You don't have that stream"
           }
         },
         "security" : [ {
           "session" : [ ]
         } ],
+        "summary" : "Change my stream's quality and mode",
         "tags" : [ "streams-controller" ]
       }
     },
     "/api/streams/{kind}/stop" : {
       "post" : {
+        "description" : "Members.",
         "operationId" : "stop",
         "parameters" : [ {
           "in" : "path",
@@ -761,6 +966,16 @@
             },
             "description" : "OK"
           },
+          "400" : {
+            "content" : {
+              "application/problem+json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Problem"
+                }
+              }
+            },
+            "description" : "An unknown kind"
+          },
           "401" : {
             "content" : {
               "application/problem+json" : {
@@ -785,6 +1000,7 @@
         "security" : [ {
           "session" : [ ]
         } ],
+        "summary" : "End my stream of that kind; nothing to stop is fine",
         "tags" : [ "streams-controller" ]
       }
     }
@@ -945,6 +1161,33 @@
         "type" : "object",
         "properties" : {
           "message" : {
+            "type" : "string"
+          }
+        }
+      },
+      "Problem" : {
+        "type" : "object",
+        "description" : "RFC 9457 problem details; the web app shows detail",
+        "properties" : {
+          "detail" : {
+            "type" : "string",
+            "description" : "A message for the person"
+          },
+          "instance" : {
+            "type" : "string"
+          },
+          "reason" : {
+            "type" : "string",
+            "description" : "Only on some answers, for the web app: \"full\" when the 6 places are taken"
+          },
+          "status" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "title" : {
+            "type" : "string"
+          },
+          "type" : {
             "type" : "string"
           }
         }

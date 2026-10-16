@@ -1,7 +1,14 @@
 package dev.hbrauveres.xove.room;
 
+import static dev.hbrauveres.xove.config.OpenApiConfig.PROBLEM_JSON;
+import static dev.hbrauveres.xove.config.OpenApiConfig.PROBLEM_REF;
+
 import dev.hbrauveres.xove.auth.CurrentUser;
 import dev.hbrauveres.xove.user.User;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -34,6 +41,7 @@ public class RoomController {
      * The body is optional: a page already connected to LiveKit sends its
      * {@code participantSid}, which confirms its seat after an API restart.
      */
+    @Operation(summary = "Ask for a seat, or poll my place in the queue", description = "Members. Polled every 2 seconds while waiting.")
     @PostMapping("/enter")
     public SeatStatus enter(@AuthenticationPrincipal OidcUser google,
                             @RequestBody(required = false) EnterRequest request) {
@@ -44,12 +52,16 @@ public class RoomController {
     }
 
     /** "Enter room" on the popup: takes the seat held for you. */
+    @Operation(summary = "Take the seat offered", description = "Members.")
+    @ApiResponse(responseCode = "200", description = "OK")
+    @ApiResponse(responseCode = "409", description = "No offer: it ran out", content = @Content(mediaType = PROBLEM_JSON, schema = @Schema(ref = PROBLEM_REF)))
     @PostMapping("/accept")
     public SeatStatus accept(@AuthenticationPrincipal OidcUser google) {
         return seats.accept(currentUser.member(google).getId());
     }
 
     /** "Cancel" on the popup, or leaving the queue. */
+    @Operation(summary = "Leave the queue, or turn the offer down", description = "Members.")
     @PostMapping("/cancel")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void cancel(@AuthenticationPrincipal OidcUser google) {
@@ -57,6 +69,7 @@ public class RoomController {
     }
 
     /** The waiting page is closing: the place is kept for 30 seconds. */
+    @Operation(summary = "The waiting page is closing: keep my place 30 seconds", description = "Members.")
     @PostMapping("/leave")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void leave(@AuthenticationPrincipal OidcUser google) {

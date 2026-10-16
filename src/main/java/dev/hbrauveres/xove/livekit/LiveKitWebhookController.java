@@ -1,9 +1,16 @@
 package dev.hbrauveres.xove.livekit;
 
+import static dev.hbrauveres.xove.config.OpenApiConfig.PROBLEM_JSON;
+import static dev.hbrauveres.xove.config.OpenApiConfig.PROBLEM_REF;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import dev.hbrauveres.xove.room.RoomSeats;
 import dev.hbrauveres.xove.stream.Streams;
 import dev.hbrauveres.xove.stream.Watching;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,6 +60,9 @@ public class LiveKitWebhookController {
         this.properties = properties;
     }
 
+    @Operation(summary = "LiveKit's room events: seats confirmed, streams ended", description = "LiveKit only: no session; the Authorization header carries LiveKit's signature of the body.")
+    @ApiResponse(responseCode = "200", description = "OK")
+    @ApiResponse(responseCode = "401", description = "A missing or wrong signature", content = @Content(mediaType = PROBLEM_JSON, schema = @Schema(ref = PROBLEM_REF)))
     @PostMapping("/api/livekit/webhook")
     public ResponseEntity<Void> receive(@RequestHeader(name = "Authorization", required = false) String authorization,
                                         @RequestBody byte[] body) {

@@ -31,7 +31,8 @@ public class OpenApiConfig {
 
     static final String SESSION = "session";
     static final String PROBLEM = "Problem";
-    static final String PROBLEM_JSON = "application/problem+json";
+    public static final String PROBLEM_REF = "#/components/schemas/" + PROBLEM;
+    public static final String PROBLEM_JSON = "application/problem+json";
 
     /** LiveKit's webhook has no session: it proves itself with its signature. */
     private static final String WEBHOOK = "/api/livekit/webhook";
@@ -83,7 +84,7 @@ public class OpenApiConfig {
         return new ApiResponse()
                 .description(description)
                 .content(new Content().addMediaType(PROBLEM_JSON,
-                        new MediaType().schema(new Schema<>().$ref("#/components/schemas/" + PROBLEM))));
+                        new MediaType().schema(new Schema<>().$ref(PROBLEM_REF))));
     }
 
     private static Schema<?> problemSchema() {
