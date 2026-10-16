@@ -79,6 +79,7 @@ Its database is named `xove-${APP_ENV}-db`, like the one `docker run` started un
 | `LIVEKIT_URL` | api | Address browsers use to reach LiveKit (`wss://…` on servers) |
 | `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET` | api | The pair shared with that environment's LiveKit: the API signs tokens with it, LiveKit checks them and signs its webhooks. Secret ≥ 32 characters |
 | `LIVEKIT_ROOM` | api | This environment's room, a different one per environment; defaults to `xove` |
+| `XOVE_API_DOCS` | api | `true` serves the API's OpenAPI description at `/api/docs` and its page at `/api/docs/ui` ([API](api.md#reading-the-description)). Off by default, and on the servers |
 | `XOVE_ROOM_SEATS` | api | People in the room at once, sharers included: 1 to 20 (fewer on a test environment, to try the queue); defaults to 20. Anything else stops the API at start-up |
 
 Their values live outside this repo, one set per environment. There's no `.env` here: each server builds its own.

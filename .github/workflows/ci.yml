@@ -2,7 +2,7 @@
 #
 #   1 · Build               the API's Docker image, saved as an artifact
 #   2 · Validate build      start the database and the API from that image, wait until healthy
-#   3 · Unit tests          JUnit + Testcontainers
+#   3 · Unit tests          JUnit + Testcontainers; keeps the OpenAPI description they generate
 #   3 · Vulnerability scan  Trivy on the image
 #   3 · SAST                Semgrep on the source code
 #
@@ -160,6 +160,16 @@ jobs:
         with:
           name: test-reports
           path: target/surefire-reports
+          retention-days: 7
+
+      # The OpenAPI description the tests generated from the code (docs/api.md, ADR-0067)
+      - name: Keep the API's description
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: openapi
+          path: target/openapi.json
+          if-no-files-found: ignore
           retention-days: 7
 
   vuln-scan:

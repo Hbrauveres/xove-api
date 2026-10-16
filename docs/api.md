@@ -1,31 +1,63 @@
 # API
 
-Every endpoint the web app and LiveKit call. All paths are under `/api`, behind the same origin as the web app. Signed-in requests carry the session cookie; state-changing ones also the CSRF token (cookie `XSRF-TOKEN`, header `X-XSRF-TOKEN`).
+How to call the API, and where its exact description is. Every endpoint, its parameters, its request and response bodies, who may call it and its errors are in **[`openapi.json`](openapi.json)**, an OpenAPI 3.1 description generated from the controllers. A test fails when the file and the code differ ([Testing](testing.md#the-description-matches-the-code)), so it's always current.
+
+## Every call
+
+- **Same origin, under `/api`.** The web app and the API share one address; nothing else calls the API except LiveKit's webhook.
+- **Signed in with a cookie.** Signing in with Google sets the `XOVE_SESSION` cookie; every call but the health check, sign-in and the webhook needs it. Without it: 401.
+- **CSRF on every change.** `GET /api/me` (among others) sets a readable `XSRF-TOKEN` cookie; every `POST`, `PUT` and `DELETE` sends its value back in the `X-XSRF-TOKEN` header. Without it: 403 ([Security](security.md#csrf)).
+- **Who may call it** is each operation's description: signed in, members, members with a seat, the stream's own person, admins. The wrong person gets 403.
+- **Errors** are RFC 9457 problem details (`application/problem+json`): `status`, `title`, a `detail` for the person, and sometimes a `reason` for the web app (`"full"` when the 6 places are taken).
+- **Polled every 2 seconds:** `POST /api/room/enter` while waiting for a seat, and `GET /api/streams` by every open room. A new field there reaches every open tab within a poll.
+- **Changes are additive:** new fields and endpoints are fine; renaming or removing one takes a release where both exist, since the web app and the API are released separately. The web app ignores fields it doesn't know.
+
+## The endpoints
+
+A map of the description; the shapes and errors are in [`openapi.json`](openapi.json). The test also checks this table lists the same endpoints.
 
 | Method + path | Who | Does |
 | --- | --- | --- |
-| `GET /api/health` | Anyone | Liveness |
-| `GET /api/oauth2/authorization/google` | Anyone | Starts Google login |
-| `GET /api/login/oauth2/code/google` | Anyone | Google callback; redirects to `/room` or `/request-access` |
-| `POST /api/auth/logout` | Signed in | Ends the session |
-| `GET /api/me` | Signed in | `{ email, name, avatarUrl, status, admin }` and the CSRF cookie |
-| `POST /api/access-requests` | Signed in, not a member | Creates a request with an optional message |
-| `GET /api/admin/access-requests` | Admin | Pending requests |
-| `POST /api/admin/access-requests/{id}/approve` | Admin | Makes the user a member |
-| `POST /api/admin/access-requests/{id}/decline` | Admin | Declines; the user can ask again |
-| `GET /api/admin/members` | Admin | Members |
-| `DELETE /api/admin/members/{id}` | Admin | Removes a member and ends all their sessions |
-| `POST /api/room/enter` | Member | Asks for a seat, or polls the queue: `{ status: "in" }`, `{ status: "waiting", place }` or `{ status: "offered", until, seconds }`. Optional body `{ participantSid }` from a page already in the video room: confirms its seat after an API restart |
-| `POST /api/room/accept` | Member | Takes the seat offered: `{ status: "in" }`; 409 when there's no offer (it ran out) |
-| `POST /api/room/cancel` | Member | Leaves the queue, or turns the offer down; 204 |
-| `POST /api/room/leave` | Member | The waiting page is closing: the place is kept 30 seconds; 204 |
-| `GET /api/streams` | Member | `{ streams: [{ kind, userId, name, avatarUrl, since, settings: { quality, mode }, mine }], free, seated, seats: { total, taken, waiting }, watching: [{ userId, sharerId, kind, mine }], here: [{ userId, since, mine }] }`, streams oldest first; `watching` lists seated people watching live streams (spec 0104); `here` lists everyone with a seat and when it was first given, kept through a reload (spec 0158) |
-| `PUT /api/streams/watching` | Member | What's on my stage (spec 0104). Body `{ sharerId, kind }`, or `{}` for an empty stage; 204, 400 for a bad kind. Kept in memory; leaving the room forgets it |
-| `POST /api/streams` | Member with a seat | Starts a stream. Body `{ kind, participantSid, trackSid, quality?, mode? }`: `screen` or `camera`, the LiveKit connection and track it comes from (never shown to anyone; 400 without them), and what it's sent with (a missing value is 1080p Smooth for a screen, 720p Smooth for a camera; a camera can't be 1080p). Starting the same kind again replaces your own. 409 when the 6 places are taken (with `reason: "full"`), or without a seat |
-| `POST /api/streams/{kind}/settings` | Its person | Changes what the stream is sent with. Body `{ quality, mode }`; 400 for an unknown value, 409 if you don't have that stream |
-| `POST /api/streams/{kind}/stop` | Member | Ends your stream of that kind; nothing to stop is fine |
-| `POST /api/livekit/token` | Member with a seat | `{ url, room, identity, token }` to join the video room; 409 without a seat |
-| `POST /api/livekit/webhook` | LiveKit (signature, no login) | Room events; marks seats used, keeps them after a leave, ends streams whose connection left or track stopped. 401 on a bad signature |
+| `GET /api/health` | Anyone | Liveness (Actuator) |
+| `GET /api/oauth2/authorization/google` | Anyone | Starts signing in with Google |
+| `GET /api/login/oauth2/code/google` | Anyone | Google's callback; redirects to `/room` or `/request-access` |
+| `POST /api/auth/logout` | Signed in | Ends the session; 204 |
+| `GET /api/me` | Signed in | Who I am, and the CSRF cookie |
+| `POST /api/access-requests` | Signed in, not a member | Asks for access, with an optional message |
+| `GET /api/admin/access-requests` | Admins | The requests waiting |
+| `POST /api/admin/access-requests/{id}/approve` | Admins | Makes the person a member |
+| `POST /api/admin/access-requests/{id}/decline` | Admins | Declines; the person may ask again |
+| `GET /api/admin/members` | Admins | The members |
+| `DELETE /api/admin/members/{id}` | Admins | Removes a member and ends all their sessions |
+| `POST /api/room/enter` | Members | Asks for a seat, or polls my place in the queue |
+| `POST /api/room/accept` | Members | Takes the seat offered |
+| `POST /api/room/cancel` | Members | Leaves the queue, or turns the offer down |
+| `POST /api/room/leave` | Members | The waiting page is closing: keeps my place 30 seconds |
+| `GET /api/streams` | Members | The live streams, the seats, who watches what and who's here |
+| `POST /api/streams` | Members with a seat | Starts my screen or camera |
+| `POST /api/streams/{kind}/settings` | Its person | Changes my stream's quality and mode |
+| `POST /api/streams/{kind}/stop` | Members | Ends my stream of that kind |
+| `PUT /api/streams/watching` | Members | What's on my stage |
+| `POST /api/livekit/token` | Members with a seat | A token to join the video room |
+| `POST /api/livekit/webhook` | LiveKit | The video room's events |
 
-Errors follow RFC 9457 (problem details); the web app shows their `detail` field.
+## What the description can't show
 
+- **Signing in.** The first three rows above and logout are Spring Security's and Actuator's, not controllers, so they aren't in the description. "Continue with Google" goes to `/api/oauth2/authorization/google`; Google comes back to `/api/login/oauth2/code/google`, and the API redirects to `/room` (members) or `/request-access` (everyone else) ([Security](security.md#signing-in-with-google)).
+- **The webhook's signature.** `POST /api/livekit/webhook` has no session: its `Authorization` header is a JWT that LiveKit signs with the secret it shares with the API, and its `sha256` claim must match the body exactly. Anything else gets 401 and changes nothing ([Security](security.md#livekit-webhooks)).
+
+## Reading the description
+
+- **On GitHub:** [`openapi.json`](openapi.json) itself. Each change to the API shows up as a change to this file in its pull request.
+- **Interactive, on your machine:** start the API with the description on, then open its page (Swagger UI):
+
+  ```bash
+  XOVE_API_DOCS=true ./mvnw spring-boot:run
+  # http://localhost:8080/api/docs/ui      the page
+  # http://localhost:8080/api/docs         the description, as JSON
+  ```
+
+  Its "Try it out" sends your session cookie (sign in through the web app on `localhost` first), so reads work; changes need the `X-XSRF-TOKEN` header, which the page doesn't add, so they get 403. It can never do more than you could anyway.
+- **From the checks:** each run keeps the description it generated with the test reports.
+
+The servers never set `XOVE_API_DOCS`, so they serve neither the description nor the page: both addresses answer 404 there.

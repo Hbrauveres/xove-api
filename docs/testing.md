@@ -83,6 +83,16 @@ void allowsOnlyOnePendingRequestPerUser() {
 
 The partial unique index from `V1` refuses the second pending request ([Data model](data-model.md#what-the-database-guarantees-itself)). Every test that starts the app with its database applies these migrations first, so a migration that doesn't apply fails them all.
 
+### The description matches the code
+
+`OpenApiDescriptionTest` starts the API with its description on, asks for it, and compares it with the committed [`openapi.json`](openapi.json); it also checks that [API](api.md)'s table lists the same endpoints. When an endpoint changes, it fails until the file is written again:
+
+```bash
+./mvnw test -Dtest=OpenApiDescriptionTest -Dopenapi.write=true
+```
+
+So a pull request that changes the API also shows the change in `openapi.json`. It and `ApiDocsOffTest` (the description is off by default) start the app on a random port and send plain HTTP, like `HealthEndpointTest`. Each run writes what it generated to `target/openapi.json`, kept with the checks' test reports.
+
 ### Running them
 
 Docker must be running for Testcontainers. The first run downloads the `postgres:17-alpine` image.
