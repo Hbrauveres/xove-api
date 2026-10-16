@@ -12,7 +12,7 @@ Every change is tested automatically in the [checks](../.github/workflows/ci.yml
 
 ## API tests
 
-Three kinds, from fastest to slowest. Each one tests what it must at the lowest cost.
+Three kinds, from fastest to slowest, each testing what it must at the lowest cost; then the few tests that need a running server.
 
 ### Plain unit tests
 
@@ -91,7 +91,7 @@ The partial unique index from `V1` refuses the second pending request ([Data mod
 ./mvnw test -Dtest=OpenApiDescriptionTest -Dopenapi.write=true
 ```
 
-So a pull request that changes the API also shows the change in `openapi.json`. It and `ApiDocsOffTest` (the description is off by default) start the app on a random port and send plain HTTP, like `HealthEndpointTest`. Each run writes what it generated to `target/openapi.json`, kept with the checks' test reports.
+So a pull request that changes the API also shows the change in `openapi.json`. It and `ApiDocsOffTest` (the description is off by default) start the app on a random port and send plain HTTP, like `HealthEndpointTest`. Each run writes what it generated to `target/openapi.json`, which the checks keep as the `openapi` artifact.
 
 ### Running them
 

@@ -1,11 +1,7 @@
 package dev.hbrauveres.xove.access;
 
-import static dev.hbrauveres.xove.config.OpenApiConfig.PROBLEM_JSON;
-import static dev.hbrauveres.xove.config.OpenApiConfig.PROBLEM_REF;
-
 import dev.hbrauveres.xove.auth.CurrentUser;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.springframework.http.HttpStatus;
@@ -19,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 public class AccessRequestController {
 
-    public record NewAccessRequest(String message) {}
+    public record NewAccessRequest(@Schema(maxLength = 500, description = "Optional, for the admins") String message) {}
 
     private final AccessService accessService;
     private final CurrentUser currentUser;
@@ -30,8 +26,8 @@ public class AccessRequestController {
     }
 
     @Operation(summary = "Ask for access, with an optional message", description = "Signed in, not a member yet.")
-    @ApiResponse(responseCode = "400", description = "A message over 500 characters", content = @Content(mediaType = PROBLEM_JSON, schema = @Schema(ref = PROBLEM_REF)))
-    @ApiResponse(responseCode = "409", description = "Already a member, or a request is already waiting", content = @Content(mediaType = PROBLEM_JSON, schema = @Schema(ref = PROBLEM_REF)))
+    @ApiResponse(responseCode = "400", description = "A message over 500 characters")
+    @ApiResponse(responseCode = "409", description = "Already a member, or a request is already waiting")
     @PostMapping("/api/access-requests")
     @ResponseStatus(HttpStatus.CREATED)
     public void requestAccess(@AuthenticationPrincipal OidcUser google,

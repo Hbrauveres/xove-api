@@ -1,8 +1,5 @@
 package dev.hbrauveres.xove.livekit;
 
-import static dev.hbrauveres.xove.config.OpenApiConfig.PROBLEM_JSON;
-import static dev.hbrauveres.xove.config.OpenApiConfig.PROBLEM_REF;
-
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import dev.hbrauveres.xove.room.RoomSeats;
 import dev.hbrauveres.xove.stream.Streams;
@@ -60,11 +57,16 @@ public class LiveKitWebhookController {
         this.properties = properties;
     }
 
-    @Operation(summary = "LiveKit's room events: seats confirmed, streams ended", description = "LiveKit only: no session; the Authorization header carries LiveKit's signature of the body.")
+    @Operation(summary = "LiveKit's room events: seats confirmed, streams ended",
+            description = "LiveKit only: no session; the Authorization header carries LiveKit's signature of the body.")
     @ApiResponse(responseCode = "200", description = "OK")
-    @ApiResponse(responseCode = "401", description = "A missing or wrong signature", content = @Content(mediaType = PROBLEM_JSON, schema = @Schema(ref = PROBLEM_REF)))
+    @ApiResponse(responseCode = "401", description = "A missing or wrong signature")
     @PostMapping("/api/livekit/webhook")
     public ResponseEntity<Void> receive(@RequestHeader(name = "Authorization", required = false) String authorization,
+                                        @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                                                description = "LiveKit's event, as it signed it",
+                                                content = @Content(mediaType = "application/webhook+json",
+                                                        schema = @Schema(type = "object")))
                                         @RequestBody byte[] body) {
         if (!verifier.verify(authorization, body)) {
             log.warn("webhook refused: missing or invalid LiveKit signature");

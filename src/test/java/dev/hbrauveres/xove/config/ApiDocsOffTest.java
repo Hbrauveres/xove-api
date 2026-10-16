@@ -16,7 +16,8 @@ import org.springframework.context.annotation.Import;
  * With the servers' settings (XOVE_API_DOCS not set), the API serves no description and no
  * interactive page: their addresses answer 404, and springdoc's usual ones never answer 200.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+// Off on purpose, even when a developer's terminal has XOVE_API_DOCS=true
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = "XOVE_API_DOCS=false")
 @Import(TestcontainersConfiguration.class)
 class ApiDocsOffTest {
 
@@ -25,10 +26,14 @@ class ApiDocsOffTest {
 
     @Test
     void theDescriptionAndItsPageAreNotServed() throws Exception {
-        assertThat(get("/api/docs")).isEqualTo(404);
-        assertThat(get("/api/docs/ui")).isEqualTo(404);
+        // Every address /api/docs/** lets through without sign-in: nothing answers them
+        for (String path : new String[] {"/api/docs", "/api/docs/", "/api/docs/ui", "/api/docs/swagger-config",
+                "/api/docs/swagger-ui/index.html", "/api/docs/swagger-ui/swagger-ui.css"}) {
+            assertThat(get(path)).as(path).isEqualTo(404);
+        }
     }
 
+    // springdoc's usual addresses need sign-in like any other: never open to everyone
     @Test
     void springdocsUsualAddressesAreNotServedEither() throws Exception {
         for (String path : new String[] {"/v3/api-docs", "/swagger-ui.html", "/swagger-ui/index.html"}) {

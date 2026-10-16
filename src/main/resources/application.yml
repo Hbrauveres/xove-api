@@ -41,8 +41,12 @@ springdoc:
   swagger-ui:
     enabled: ${XOVE_API_DOCS:false}
     path: /api/docs/ui
+    # "Try it out" sends the XSRF-TOKEN cookie back in the X-XSRF-TOKEN header, as the web app does
+    csrf:
+      enabled: true
   # Keys in order, so the committed file only changes when the API does
   writer-with-order-by-keys: true
+  default-produces-media-type: application/json
 
 management:
   endpoints:

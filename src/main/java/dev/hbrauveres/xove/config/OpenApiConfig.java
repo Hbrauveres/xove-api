@@ -18,8 +18,10 @@ import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.servers.Server;
 import java.util.List;
 import org.springdoc.core.customizers.OpenApiCustomizer;
+import org.springdoc.core.utils.SpringDocUtils;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.web.csrf.CsrfToken;
 
 /**
  * The parts of the OpenAPI description the controllers can't say themselves (ADR-0067): its
@@ -31,11 +33,22 @@ public class OpenApiConfig {
 
     static final String SESSION = "session";
     static final String PROBLEM = "Problem";
-    public static final String PROBLEM_REF = "#/components/schemas/" + PROBLEM;
-    public static final String PROBLEM_JSON = "application/problem+json";
+    static final String PROBLEM_REF = "#/components/schemas/" + PROBLEM;
+    static final String PROBLEM_JSON = "application/problem+json";
 
     /** LiveKit's webhook has no session: it proves itself with its signature. */
     private static final String WEBHOOK = "/api/livekit/webhook";
+    private static final String FORBIDDEN_READ =
+            "Not allowed: problem details for a member call from a non-member; Spring's error body for an admin call";
+    private static final String FORBIDDEN_CHANGE =
+            "Without the CSRF token (Spring's error body), or not allowed (problem details for a member call)";
+    /** Any signed-in person may call it, member or not. */
+    private static final String ME = "/api/me";
+
+    static {
+        // The CSRF token Spring hands GET /api/me isn't a parameter the caller sends
+        SpringDocUtils.getConfig().addRequestWrapperToIgnore(CsrfToken.class);
+    }
 
     @Bean
     OpenAPI xoveOpenApi() {
@@ -47,44 +60,59 @@ public class OpenApiConfig {
                                 The API of Xovê, a private room where invited friends share their screens \
                                 and cameras. Every path is under /api, on the web app's own origin. A \
                                 signed-in call carries the session cookie; every POST, PUT and DELETE also \
-                                sends the XSRF-TOKEN cookie's value in the X-XSRF-TOKEN header. Errors are \
-                                RFC 9457 problem details. Signing in (Google) and logging out aren't listed: \
-                                see docs/api.md."""))
+                                sends the XSRF-TOKEN cookie's value in the X-XSRF-TOKEN header. Errors from the \
+                                controllers are RFC 9457 problem details; a 401 has no body. Signing in \
+                                (Google) and logging out aren't listed: see docs/api.md."""))
                 .servers(List.of(new Server().url("/")))
                 .components(new Components()
                         .addSecuritySchemes(SESSION, new SecurityScheme()
                                 .type(SecurityScheme.Type.APIKEY)
                                 .in(SecurityScheme.In.COOKIE)
                                 .name("XOVE_SESSION")
-                                .description("The session cookie, set after signing in with Google"))
-                        .addSchemas(PROBLEM, problemSchema()));
+                                .description("The session cookie, set after signing in with Google")));
     }
 
-    /** Every operation but the webhook needs a session, and can answer 401 and 403. */
+    /**
+     * Who may call what, and the errors springdoc can't see. Every operation but the webhook needs
+     * a session: signed out it gets 401, with no body (Spring Security's entry point). It can get
+     * 403 too, except GET /api/me, which any signed-in person may call. The other 4xx and 5xx
+     * answers come from the controllers, as problem details.
+     */
     @Bean
     OpenApiCustomizer protectedCallsCustomizer() {
-        return openApi -> openApi.getPaths().forEach((path, item) -> {
-            if (path.equals(WEBHOOK)) {
-                return;
-            }
-            item.readOperationsMap().forEach((method, operation) -> protect(method, operation));
-        });
+        return openApi -> {
+            // Added here, not only on the OpenAPI bean: springdoc drops schemas nothing pointed at yet
+            openApi.getComponents().addSchemas(PROBLEM, problemSchema());
+            openApi.getPaths().forEach((path, item) ->
+                    item.readOperationsMap().forEach((method, operation) -> {
+                        if (!path.equals(WEBHOOK)) {
+                            protect(path, method, operation);
+                        }
+                        operation.getResponses().forEach(OpenApiConfig::problemBody);
+                    }));
+        };
     }
 
-    private static void protect(PathItem.HttpMethod method, Operation operation) {
+    private static void protect(String path, PathItem.HttpMethod method, Operation operation) {
         operation.addSecurityItem(new SecurityRequirement().addList(SESSION));
         ApiResponses responses = operation.getResponses();
-        responses.putIfAbsent("401", problem("Not signed in"));
-        responses.putIfAbsent("403", problem(method == PathItem.HttpMethod.GET
-                ? "Not allowed (a member or admin call from someone who isn't one)"
-                : "Without the CSRF token, or not allowed"));
+        responses.putIfAbsent("401", new ApiResponse().description("Not signed in (no body)"));
+        if (!(method == PathItem.HttpMethod.GET && path.equals(ME))) {
+            responses.putIfAbsent("403", new ApiResponse()
+                    .description(method == PathItem.HttpMethod.GET ? FORBIDDEN_READ : FORBIDDEN_CHANGE));
+        }
     }
 
-    static ApiResponse problem(String description) {
-        return new ApiResponse()
-                .description(description)
-                .content(new Content().addMediaType(PROBLEM_JSON,
-                        new MediaType().schema(new Schema<>().$ref(PROBLEM_REF))));
+    /**
+     * A 4xx or 5xx the controllers declare is a problem, whatever springdoc guessed from the method's
+     * return type; 401 and 403 come from security and say their own body.
+     */
+    private static void problemBody(String code, ApiResponse response) {
+        boolean error = code.startsWith("4") || code.startsWith("5");
+        if (error && !code.equals("401") && !code.equals("403")) {
+            response.content(new Content().addMediaType(PROBLEM_JSON,
+                    new MediaType().schema(new Schema<>().$ref(PROBLEM_REF))));
+        }
     }
 
     private static Schema<?> problemSchema() {

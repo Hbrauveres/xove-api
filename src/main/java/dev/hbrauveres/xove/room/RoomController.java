@@ -1,12 +1,8 @@
 package dev.hbrauveres.xove.room;
 
-import static dev.hbrauveres.xove.config.OpenApiConfig.PROBLEM_JSON;
-import static dev.hbrauveres.xove.config.OpenApiConfig.PROBLEM_REF;
-
 import dev.hbrauveres.xove.auth.CurrentUser;
 import dev.hbrauveres.xove.user.User;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import org.springframework.http.HttpStatus;
@@ -41,20 +37,23 @@ public class RoomController {
      * The body is optional: a page already connected to LiveKit sends its
      * {@code participantSid}, which confirms its seat after an API restart.
      */
-    @Operation(summary = "Ask for a seat, or poll my place in the queue", description = "Members. Polled every 2 seconds while waiting.")
+    @Operation(summary = "Ask for a seat, or poll my place in the queue",
+            description = "Members. Polled every 2 seconds while waiting.")
     @PostMapping("/enter")
     public SeatStatus enter(@AuthenticationPrincipal OidcUser google,
                             @RequestBody(required = false) EnterRequest request) {
         return seats.enter(currentUser.member(google).getId(), request == null ? null : request.participantSid());
     }
 
-    record EnterRequest(String participantSid) {
+    record EnterRequest(
+            @Schema(description = "From a page already in the video room: confirms its seat after an API restart")
+            String participantSid) {
     }
 
     /** "Enter room" on the popup: takes the seat held for you. */
     @Operation(summary = "Take the seat offered", description = "Members.")
     @ApiResponse(responseCode = "200", description = "OK")
-    @ApiResponse(responseCode = "409", description = "No offer: it ran out", content = @Content(mediaType = PROBLEM_JSON, schema = @Schema(ref = PROBLEM_REF)))
+    @ApiResponse(responseCode = "409", description = "No offer: it ran out")
     @PostMapping("/accept")
     public SeatStatus accept(@AuthenticationPrincipal OidcUser google) {
         return seats.accept(currentUser.member(google).getId());
