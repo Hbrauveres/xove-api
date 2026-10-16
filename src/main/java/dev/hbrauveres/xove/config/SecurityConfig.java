@@ -29,6 +29,9 @@ public class SecurityConfig {
                 .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                 .requestMatchers("/api/health", "/api/health/**").permitAll()
                 .requestMatchers("/api/oauth2/**", "/api/login/**").permitAll()
+                // The OpenAPI description and its page: served only when XOVE_API_DOCS=true (a developer's
+                // machine); off, nothing serves these addresses and they answer 404
+                .requestMatchers("/api/docs", "/api/docs/**").permitAll()
                 // LiveKit has no login; the webhook checks LiveKit's signature itself
                 .requestMatchers("/api/livekit/webhook").permitAll()
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")

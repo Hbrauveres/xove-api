@@ -32,6 +32,18 @@ spring:
             scope: openid,email,profile
             redirect-uri: "{baseUrl}/api/login/oauth2/code/{registrationId}"
 
+# The OpenAPI description and its page, generated from the controllers (ADR-0067). Off unless
+# XOVE_API_DOCS=true, which only a developer's machine and the tests set: the servers never serve them.
+springdoc:
+  api-docs:
+    enabled: ${XOVE_API_DOCS:false}
+    path: /api/docs
+  swagger-ui:
+    enabled: ${XOVE_API_DOCS:false}
+    path: /api/docs/ui
+  # Keys in order, so the committed file only changes when the API does
+  writer-with-order-by-keys: true
+
 management:
   endpoints:
     web:
