@@ -49,7 +49,7 @@ A map of the description; the shapes and errors are in [`openapi.json`](openapi.
 ## Reading the description
 
 - **On GitHub:** [`openapi.json`](openapi.json) itself. Each change to the API shows up as a change to this file in its pull request.
-- **Interactive, on your machine:** start the API with the description on, then open its page (Swagger UI):
+- **Interactive, on your machine:** with the API's settings exported and its database running ([Getting started](getting-started.md#run-the-api)), start it with the description on, then open its page (Swagger UI):
 
   ```bash
   XOVE_API_DOCS=true ./mvnw spring-boot:run
