@@ -3,7 +3,7 @@ package dev.hbrauveres.xove.stream;
 import java.util.Arrays;
 import java.util.Optional;
 
-/** What a stream shows: a shared screen or a camera (spec 0060). Never a microphone. */
+/** What a stream shows: a shared screen or a camera (spec 0060). A voice is never a stream of its own: it comes with one of these (ADR-0069). */
 public enum StreamKind {
     SCREEN("screen"),
     CAMERA("camera");

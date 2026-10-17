@@ -129,7 +129,7 @@ sequenceDiagram
 
 ### Streams
 
-1. **Up to 6 live streams,** each a person's screen or camera. Someone with both uses 2. Nobody is pushed out: with 6 live, the start buttons wait.
+1. **Up to 6 live streams,** each a person's screen or camera. Someone with both uses 2. A voice (the microphone) is never a stream: it comes with a screen or a camera, takes no place, and its track ending ends nothing. Nobody is pushed out: with 6 live, the start buttons wait.
 2. **Stop:** the lit button, the menu's Stop, or the browser's own bar stops the video and ends the stream. Only its person can stop or change a stream.
 3. **Reload while sharing:** the page sees the API lists a stream of its own that nothing sends, and ends it.
 4. **Everyone** polls the streams every 2 seconds and plays them from LiveKit. People sharing see their own streams, as viewers do, without their sound.

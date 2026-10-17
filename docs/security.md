@@ -65,10 +65,10 @@ To join the video room, a browser needs a token the API signs (`LiveKitTokens`),
 | --- | --- |
 | Issued by the API's key, for identity `user-<id>`, with the person's name | LiveKit knows who it is; the same identity on another device replaces the first connection |
 | One room only, this environment's (`LIVEKIT_ROOM`) | It can't join any other room |
-| May publish only `screen_share`, `screen_share_audio` and `camera` | Never a microphone; no data messages, no changing its own metadata |
+| May publish only `screen_share`, `screen_share_audio`, `camera` and `microphone` | No data messages, no changing its own metadata. The web app sends the microphone only alongside a screen or a camera, by the sharer's choice ([known trust boundaries](#known-trust-boundaries)) |
 | Valid from now for 1 hour | An old token stops working |
 
-`LiveKitTokensTest.itOnlyAllowsJoiningOurRoomAndSharingAScreenOrACamera`, `itIsValidFromNowForTheConfiguredTime`, `aTokenSignedWithAnotherSecretDoesNotVerify`.
+`LiveKitTokensTest.itOnlyAllowsJoiningOurRoomAndSharingAScreenACameraAndAVoice`, `itIsValidFromNowForTheConfiguredTime`, `aTokenSignedWithAnotherSecretDoesNotVerify`.
 
 **Only someone with a seat gets one** (409 otherwise), so the video room can't hold more people than the seats. `LiveKitControllerTest.withoutASeatThereIsNoToken`. The secret never leaves the server: the browser gets only the signed token and LiveKit's address. A secret shorter than 32 characters counts as not set, and video stays off. `LiveKitTokensTest.aShortOrMissingSecretMeansNotConfigured`.
 
@@ -95,6 +95,7 @@ To join the video room, a browser needs a token the API signs (`LiveKitTokens`),
 Accepted for a small group of friends, and written down so they're decisions, not surprises:
 
 - **The 6-stream limit isn't LiveKit's.** Any seated member's token may publish a screen and a camera; the limit is enforced by the API's list and the web app.
+- **A voice could be sent on its own.** Any seated member's token may publish a microphone; the web app sends it only with a screen or a camera, by the sharer's choice, but LiveKit can't tell the difference, so a modified client could send a voice alone.
 - **A token outlives a seat.** It stays valid for its hour, so someone whose seat ran out could rejoin LiveKit with an old one until it expires.
 - **A new Google account with a known email takes over that user.** Signing in with a Google account the API doesn't know yet matches an existing user by email and links the new account to it. Normally only one Google account holds a given email at a time, so this mostly matters for accounts created before Google's id was stored, or an email that moved to a new Google account.
 - **After an API restart, the API takes a page's word** for its LiveKit connection when it asks for its seat again, so a member could keep a seat they don't use.

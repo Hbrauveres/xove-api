@@ -58,7 +58,7 @@ class LiveKitTokensTest {
     }
 
     @Test
-    void itOnlyAllowsJoiningOurRoomAndSharingAScreenOrACamera() throws Exception {
+    void itOnlyAllowsJoiningOurRoomAndSharingAScreenACameraAndAVoice() throws Exception {
         Map<String, Object> video = SignedJWT.parse(tokens.create("user-1", "Ana")).getJWTClaimsSet().getJSONObjectClaim("video");
 
         assertThat(video)
@@ -66,11 +66,11 @@ class LiveKitTokensTest {
                 .containsEntry("roomJoin", true)
                 .containsEntry("canSubscribe", true)
                 .containsEntry("canPublish", true)
-                .containsEntry("canPublishData", false);
-        // Spec 0060: a camera too, but never a microphone (decision 11).
+                .containsEntry("canPublishData", false)
+                .containsEntry("canUpdateOwnMetadata", false);
+        // Spec 0060: a camera too; spec 0122: and a microphone, sent only with a screen or a camera (ADR-0069).
         assertThat(video.get("canPublishSources")).asList()
-                .containsExactly("screen_share", "screen_share_audio", "camera")
-                .doesNotContain("microphone");
+                .containsExactly("screen_share", "screen_share_audio", "camera", "microphone");
     }
 
     @Test

@@ -23,10 +23,11 @@ import java.util.Map;
 public class LiveKitTokens {
 
     /**
-     * Screen, the screen's own sound (a tab or system audio), and the camera (spec 0060).
-     * Never the microphone (decision 11).
+     * Screen, the screen's own sound (a tab or system audio), the camera (spec 0060), and the
+     * microphone (spec 0122): the web app sends it only alongside a screen or a camera, by the
+     * sharer's choice (ADR-0069).
      */
-    static final List<String> PUBLISH_SOURCES = List.of("screen_share", "screen_share_audio", "camera");
+    static final List<String> PUBLISH_SOURCES = List.of("screen_share", "screen_share_audio", "camera", "microphone");
 
     private final LiveKitProperties properties;
     private final Clock clock;
