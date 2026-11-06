@@ -8,7 +8,7 @@ How to call the API, and where its exact description is. Every endpoint, its par
 - **Signed in with a cookie.** Signing in with Google sets the `XOVE_SESSION` cookie; every call but the health check, sign-in and the webhook needs it. Without it: 401.
 - **CSRF on every change.** `GET /api/me` (among others) sets a readable `XSRF-TOKEN` cookie; every `POST`, `PUT` and `DELETE` sends its value back in the `X-XSRF-TOKEN` header. Without it: 403 ([Security](security.md#csrf)).
 - **Who may call it** is each operation's description: signed in, members, members with a seat, the stream's own person, admins. The wrong person gets 403.
-- **Errors** from the API's own rules are RFC 9457 problem details (`application/problem+json`): `status`, `title`, a `detail` for the person, and sometimes a `reason` for the web app (`"full"` when the 6 places are taken). A malformed body or path value gets 400 the same way. Spring Security's answers are plainer: 401 (signed out) has no body, and a 403 for a missing CSRF token or a non-admin calling an admin endpoint has Spring's error body; a non-member calling a member endpoint gets problem details.
+- **Errors** from the API's own rules are RFC 9457 problem details (`application/problem+json`): `status`, `title`, a `detail` for the person, and sometimes a `reason` for the web app (`"full"` when every stream place is taken). A malformed body or path value gets 400 the same way. Spring Security's answers are plainer: 401 (signed out) has no body, and a 403 for a missing CSRF token or a non-admin calling an admin endpoint has Spring's error body; a non-member calling a member endpoint gets problem details.
 - **Polled every 2 seconds:** `POST /api/room/enter` while waiting for a seat, and `GET /api/streams` by every open room. A new field there reaches every open tab within a poll.
 - **Changes are additive:** new fields and endpoints are fine; renaming or removing one takes a release where both exist, since the web app and the API are released separately. The web app ignores fields it doesn't know.
 
@@ -33,7 +33,7 @@ A map of the description; the shapes and errors are in [`openapi.json`](openapi.
 | `POST /api/room/accept` | Members | Takes the seat offered |
 | `POST /api/room/cancel` | Members | Leaves the queue, or turns the offer down |
 | `POST /api/room/leave` | Members | The waiting page is closing: keeps my place 30 seconds |
-| `GET /api/streams` | Members | The live streams, the seats, who watches what and who's here |
+| `GET /api/streams` | Members | The live streams, how many places there are (`places`) and how many are free, the seats, who watches what and who's here |
 | `POST /api/streams` | Members with a seat | Starts my screen or camera |
 | `POST /api/streams/{kind}/settings` | Its person | Changes my stream's quality and mode |
 | `POST /api/streams/{kind}/stop` | Members | Ends my stream of that kind |

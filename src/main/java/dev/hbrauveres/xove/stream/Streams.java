@@ -10,7 +10,7 @@ import java.util.Objects;
  * The live streams of the room (spec 0060). Plain Java: no Spring, no HTTP, no database.
  *
  * Rules:
- * - up to {@link #MAX} streams at once; each is one person's screen or camera;
+ * - up to {@link #places()} streams at once (the room's setting, spec 0191); each is one person's screen or camera;
  * - a person has at most one of each; starting the same kind again replaces their own
  *   (a reconnect, or registering again after an API restart) and keeps its start time;
  * - nobody is pushed out: when the places are full, starting is refused;
@@ -23,13 +23,18 @@ import java.util.Objects;
  */
 public class Streams {
 
-    public static final int MAX = 6;
-
+    private final int places;
     private final Clock clock;
     private final List<Stream> streams = new ArrayList<>();
 
-    public Streams(Clock clock) {
+    public Streams(int places, Clock clock) {
+        this.places = places;
         this.clock = clock;
+    }
+
+    /** How many streams can be live at once. */
+    public int places() {
+        return places;
     }
 
     /** Every live stream, oldest first. */
@@ -38,7 +43,7 @@ public class Streams {
     }
 
     public synchronized int free() {
-        return MAX - streams.size();
+        return places - streams.size();
     }
 
     /**
@@ -61,8 +66,8 @@ public class Streams {
             streams.set(mine, again);
             return again;
         }
-        if (streams.size() >= MAX) {
-            throw new StreamsFullException();
+        if (streams.size() >= places) {
+            throw new StreamsFullException(places);
         }
         Stream stream = new Stream(userId, name, avatarUrl, kind, connection, settings, clock.instant());
         streams.add(stream);

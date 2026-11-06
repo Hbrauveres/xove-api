@@ -24,7 +24,7 @@ class WatchingTest {
 
     @BeforeEach
     void setUp() {
-        streams = new Streams(new MutableClock(Instant.parse("2026-10-06T20:00:00Z")));
+        streams = new Streams(6, new MutableClock(Instant.parse("2026-10-06T20:00:00Z")));
         watching = new Watching();
         seated = Set.of(ANA, BRUNO, CAIO);
     }

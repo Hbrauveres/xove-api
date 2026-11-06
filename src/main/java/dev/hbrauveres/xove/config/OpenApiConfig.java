@@ -124,6 +124,6 @@ public class OpenApiConfig {
                 .addProperty("detail", new StringSchema().description("A message for the person"))
                 .addProperty("instance", new StringSchema())
                 .addProperty("reason", new StringSchema()
-                        .description("Only on some answers, for the web app: \"full\" when the 6 places are taken"));
+                        .description("Only on some answers, for the web app: \"full\" when every stream place is taken (XOVE_STREAM_PLACES)"));
     }
 }

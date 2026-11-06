@@ -71,7 +71,7 @@ sequenceDiagram
   C->>R: seated?
   R-->>C: yes (or 409)
   C->>S: start(screen, connection, track, settings)
-  S-->>C: the stream (or 409 when the 6 places are taken)
+  S-->>C: the stream (or 409 when every stream place is taken)
   C-->>B: 200 and the streams
 ```
 
@@ -110,6 +110,7 @@ sequenceDiagram
 
 ### Seats and the queue
 
+- **6 stream places** (screens and cameras live at once). The number is a setting both apps share, `XOVE_STREAM_PLACES` (1 to 6, 6 when not set); the API refuses a stream past it with 409 `full`, and says it in the streams answer's `places`.
 - **20 seats,** sharers included. The number is a setting, `XOVE_ROOM_SEATS` (1 to 20, 20 when not set); a test environment can use fewer to try the queue.
 - **Only someone with a seat gets a LiveKit token,** so the room can't go past the seats.
 - **Entering:** the room page asks for a seat (`POST /api/room/enter`). With one free and nobody waiting, you're in. Otherwise the waiting screen shows your place, and asks again every 2 seconds (that poll is how the API knows you're still there).
@@ -163,7 +164,7 @@ Each environment has its own LiveKit server, key pair and room, so nothing signe
 
 **What a restart loses.** A new version of the API (every API deploy, never a web deploy) starts with an empty room. The open pages bring it back on their own:
 - each room page asks for its seat again within a poll, sending its LiveKit connection: LiveKit doesn't report that connection joining again, so this confirms the seat;
-- each page still sending a screen or camera registers it again; re-registered streams count as started then, so "longest sharing" restarts from that order. If the 6 places filled up meanwhile, the page stops sending; any other failure is tried again on the next poll;
+- each page still sending a screen or camera registers it again; re-registered streams count as started then, so "longest sharing" restarts from that order. If the stream places filled up meanwhile, the page stops sending; any other failure is tried again on the next poll;
 - what people watch is reported again within a second.
 
 Sessions are in the database, so nobody is signed out.

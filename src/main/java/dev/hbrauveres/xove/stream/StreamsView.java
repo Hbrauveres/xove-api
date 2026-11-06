@@ -6,13 +6,14 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * What the frontend gets: every live stream, oldest first, how many places are free,
+ * What the frontend gets: every live stream, oldest first, how many places there are
+ * (the room's setting, spec 0191) and how many are free,
  * and whether the asking person has a seat in the room (after an API restart, their
  * page enters again). Also how full the room is and who watches which stream (spec 0104),
  * and when each seated person arrived (spec 0158).
  * LiveKit connection ids stay in the API.
  */
-public record StreamsView(List<Item> streams, int free, boolean seated, Seats seats, List<Watcher> watching,
+public record StreamsView(List<Item> streams, int free, int places, boolean seated, Seats seats, List<Watcher> watching,
                           List<Here> here) {
 
     /** One live stream; {@code mine} when it's the asking person's. */
@@ -44,7 +45,7 @@ public record StreamsView(List<Item> streams, int free, boolean seated, Seats se
         List<Here> here = arrivals.entrySet().stream()
                 .map(e -> new Here(e.getKey(), e.getValue(), e.getKey().equals(viewerId)))
                 .toList();
-        return new StreamsView(items, streams.free(), seated,
+        return new StreamsView(items, streams.free(), streams.places(), seated,
                 new Seats(occupancy.total(), occupancy.taken(), occupancy.waiting()), watching, here);
     }
 }

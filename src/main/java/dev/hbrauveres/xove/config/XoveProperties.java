@@ -15,7 +15,7 @@ public record XoveProperties(List<String> adminEmails, Room room) {
                         .filter(e -> !e.isBlank())
                         .map(User::normalizeEmail)
                         .toList();
-        room = room == null ? new Room(null) : room;
+        room = room == null ? new Room(null, null) : room;
     }
 
     public boolean isAdmin(String email) {
@@ -27,10 +27,13 @@ public record XoveProperties(List<String> adminEmails, Room room) {
      *
      * @param seats people in the room at once, sharers included: 1 to 20, 20 when not set
      *              ({@code XOVE_ROOM_SEATS}); a test environment can use fewer to try the queue
+     * @param streamPlaces streams (screens and cameras) live at once: 1 to 6, 6 when not set
+     *                     ({@code XOVE_STREAM_PLACES}, a setting both apps share; spec 0191)
      */
-    public record Room(Integer seats) {
+    public record Room(Integer seats, Integer streamPlaces) {
 
         public static final int MAX_SEATS = 20;
+        public static final int MAX_STREAM_PLACES = 6;
 
         public Room {
             if (seats == null) {
@@ -39,6 +42,13 @@ public record XoveProperties(List<String> adminEmails, Room room) {
             if (seats < 1 || seats > MAX_SEATS) {
                 throw new IllegalArgumentException(
                         "XOVE_ROOM_SEATS must be a whole number from 1 to " + MAX_SEATS + ", not " + seats);
+            }
+            if (streamPlaces == null) {
+                streamPlaces = MAX_STREAM_PLACES;
+            }
+            if (streamPlaces < 1 || streamPlaces > MAX_STREAM_PLACES) {
+                throw new IllegalArgumentException("XOVE_STREAM_PLACES must be a whole number from 1 to "
+                        + MAX_STREAM_PLACES + ", not " + streamPlaces);
             }
         }
     }

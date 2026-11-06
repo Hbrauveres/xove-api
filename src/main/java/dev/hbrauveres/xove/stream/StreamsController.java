@@ -55,7 +55,7 @@ public class StreamsController {
     @Operation(summary = "Start my screen or camera", description = "Members with a seat.")
     @ApiResponse(responseCode = "200", description = "OK")
     @ApiResponse(responseCode = "400", description = "An unknown kind, a missing connection or track, or settings that don't fit the kind")
-    @ApiResponse(responseCode = "409", description = "The 6 places are taken (reason: full), or no seat")
+    @ApiResponse(responseCode = "409", description = "Every stream place is taken (reason: full), or no seat")
     @PostMapping
     public StreamsView start(@AuthenticationPrincipal OidcUser google,
                              @RequestBody(required = false) StartRequest request) {

@@ -29,6 +29,7 @@ services:
       LIVEKIT_ROOM: ${LIVEKIT_ROOM:-xove}
       # People in the room at once, 1 to 20 (spec 0060); a test environment can use fewer to try the queue.
       XOVE_ROOM_SEATS: ${XOVE_ROOM_SEATS:-20}
+      XOVE_STREAM_PLACES: ${XOVE_STREAM_PLACES:-6}
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://localhost:8080/api/health | grep -q '\"status\":\"UP\"'"]
       interval: 5s
