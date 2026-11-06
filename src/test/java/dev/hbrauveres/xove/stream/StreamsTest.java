@@ -24,7 +24,7 @@ class StreamsTest {
     @BeforeEach
     void setUp() {
         clock = new MutableClock(Instant.parse("2026-10-03T20:00:00Z"));
-        streams = new Streams(clock);
+        streams = new Streams(6, clock);
     }
 
     private Stream start(Long userId, StreamKind kind) {
@@ -54,6 +54,24 @@ class StreamsTest {
                 .isInstanceOf(StreamsFullException.class)
                 .hasMessage("The room already has 6 streams.");
         assertThat(streams.all()).hasSize(6);
+    }
+
+    @Test
+    void aRoomSetToFourStreamsRefusesTheFifth() {
+        Streams four = new Streams(4, clock);
+        for (long user = 1; user <= 2; user++) {
+            for (StreamKind kind : new StreamKind[] {SCREEN, CAMERA}) {
+                four.start(user, "User " + user, null, kind,
+                        new SharingConnection("PA_" + user, "TR_" + user + "_" + kind), StreamSettings.defaultFor(kind));
+            }
+        }
+
+        assertThat(four.places()).isEqualTo(4);
+        assertThat(four.free()).isZero();
+        assertThatThrownBy(() -> four.start(3L, "User 3", null, SCREEN,
+                new SharingConnection("PA_3", "TR_3"), StreamSettings.defaultFor(SCREEN)))
+                .isInstanceOf(StreamsFullException.class)
+                .hasMessage("The room already has 4 streams.");
     }
 
     @Test

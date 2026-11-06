@@ -106,7 +106,8 @@ class StreamsControllerTest {
         mvc.perform(get("/api/streams").with(as("sub-friend")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.streams").isEmpty())
-                .andExpect(jsonPath("$.free").value(6));
+                .andExpect(jsonPath("$.free").value(6))
+                .andExpect(jsonPath("$.places").value(6));
     }
 
     // Spec 0060: only someone in the room can start a stream, and the poll says if you're in.

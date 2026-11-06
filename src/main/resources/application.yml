@@ -60,6 +60,8 @@ xove:
   room:
     # People in the room at once, sharers included: 1 to 20 (spec 0060). A test environment can use fewer.
     seats: ${XOVE_ROOM_SEATS:20}
+    # Streams (screens and cameras) live at once: 1 to 6 (spec 0191). Both apps share it (from xove-ops).
+    stream-places: ${XOVE_STREAM_PLACES:6}
   livekit:
     url: ${LIVEKIT_URL:}
     api-key: ${LIVEKIT_API_KEY:}

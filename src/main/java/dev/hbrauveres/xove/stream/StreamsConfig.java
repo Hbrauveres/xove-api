@@ -1,5 +1,6 @@
 package dev.hbrauveres.xove.stream;
 
+import dev.hbrauveres.xove.config.XoveProperties;
 import java.time.Clock;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -8,9 +9,10 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 class StreamsConfig {
 
+    /** As many places as the room's setting says (spec 0191). */
     @Bean
-    Streams streams() {
-        return new Streams(Clock.systemUTC());
+    Streams streams(XoveProperties properties) {
+        return new Streams(properties.room().streamPlaces(), Clock.systemUTC());
     }
 
     /** Who has which stream on their stage (spec 0104). */

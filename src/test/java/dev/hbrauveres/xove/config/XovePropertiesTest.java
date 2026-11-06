@@ -9,7 +9,7 @@ import org.springframework.boot.context.properties.bind.BindException;
 import org.springframework.boot.context.properties.bind.Binder;
 import org.springframework.boot.context.properties.source.MapConfigurationPropertySource;
 
-/** The room size, from XOVE_ROOM_SEATS (spec 0060). */
+/** The room size, from XOVE_ROOM_SEATS (spec 0060), and its stream places, from XOVE_STREAM_PLACES (spec 0191). */
 class XovePropertiesTest {
 
     private static XoveProperties bind(Map<String, String> values) {
@@ -42,6 +42,27 @@ class XovePropertiesTest {
                     .as(wrong)
                     .isInstanceOf(BindException.class)
                     .hasMessageContaining("xove.room.seats");
+        }
+    }
+
+    @Test
+    void withoutTheSettingSixStreamsCanBeLive() {
+        assertThat(bind(Map.of()).room().streamPlaces()).isEqualTo(6);
+    }
+
+    @Test
+    void theSettingSetsTheStreamPlaces() {
+        assertThat(bind(Map.of("xove.room.stream-places", "4")).room().streamPlaces()).isEqualTo(4);
+        assertThat(bind(Map.of("xove.room.stream-places", "1")).room().streamPlaces()).isEqualTo(1);
+    }
+
+    @Test
+    void streamPlacesOutside1To6StopTheApi() {
+        for (String wrong : new String[] {"0", "7", "-1"}) {
+            assertThatThrownBy(() -> bind(Map.of("xove.room.stream-places", wrong)))
+                    .as(wrong)
+                    .isInstanceOf(BindException.class)
+                    .rootCause().hasMessage("XOVE_STREAM_PLACES must be a whole number from 1 to 6, not " + wrong);
         }
     }
 }

@@ -583,7 +583,7 @@
                 }
               }
             },
-            "description" : "The 6 places are taken (reason: full), or no seat"
+            "description" : "Every stream place is taken (reason: full), or no seat"
           }
         },
         "security" : [ {
@@ -911,7 +911,7 @@
           },
           "reason" : {
             "type" : "string",
-            "description" : "Only on some answers, for the web app: \"full\" when the 6 places are taken"
+            "description" : "Only on some answers, for the web app: \"full\" when every stream place is taken (XOVE_STREAM_PLACES)"
           },
           "status" : {
             "type" : "integer",
@@ -1022,6 +1022,10 @@
             "items" : {
               "$ref" : "#/components/schemas/Here"
             }
+          },
+          "places" : {
+            "type" : "integer",
+            "format" : "int32"
           },
           "seated" : {
             "type" : "boolean"

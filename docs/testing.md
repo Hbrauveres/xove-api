@@ -37,7 +37,7 @@ void closingTheTabKeepsTheSeatFor30Seconds() {
 }
 ```
 
-`wait(29)` is `clock.advance(Duration.ofSeconds(29))`. Also: `StreamsTest` (the 6 places), `LiveKitTokensTest` (a token's signature, grants and expiry), `LiveKitWebhookVerifierTest` (every way a signature is refused).
+`wait(29)` is `clock.advance(Duration.ofSeconds(29))`. Also: `StreamsTest` (the stream places, and a room set to fewer), `LiveKitTokensTest` (a token's signature, grants and expiry), `LiveKitWebhookVerifierTest` (every way a signature is refused).
 
 ### Web layer tests
 
