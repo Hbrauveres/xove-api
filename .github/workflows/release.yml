@@ -68,8 +68,11 @@ jobs:
         # Its image was built, tested, scanned and ran healthy on staging.
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # Each run's own conclusion is read: GitHub's status=success filter can lag behind a
+        # finished run and miss it.
         run: |
-          green=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/stage.yml/runs?head_sha=$GITHUB_SHA&status=success&event=push&branch=main" --jq .total_count)
+          green=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/stage.yml/runs?head_sha=$GITHUB_SHA&event=push&branch=main" \
+            --jq '[.workflow_runs[] | select(.conclusion == "success")] | length')
           if [[ "$green" == 0 ]]; then
             echo "::error::${GITHUB_SHA::12} never passed a stage release; release a commit that runs on staging"; exit 1
           fi
